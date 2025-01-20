@@ -17,8 +17,6 @@ int main() {
     if ((socketfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         printf("errorsocketdidntowrk:");
     }
-
-
     printf("hello word\n");
 
     return 0;
