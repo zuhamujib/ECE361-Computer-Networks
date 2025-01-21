@@ -30,16 +30,15 @@ int main() {
     
     // To start communication with the client you first create a socket
     // then send the messgae through the socket
+    sockaddr_in *socket_addr;
+    socket_addr->sin_family = AF_INET;    // internet address family
+    // socket_addr->sin_port = 
+    // socket_addr->sin_addr = 
 
-    // int socketFd;   // the socket I am using to send messages to the server
-    // if ((socketFd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-    //     printf("errorsocketdidntowrk:");
-    // }
-    
     const char *buf = "ftp";
     size_t len = sizeof(buf);
 
-    ssize_t sendto(socketFd, buf, len, 0, const struct sockaddr *dest_addr, socklen_t addrlen);
+    // ssize_t sendto(socketFd, buf, len, 0, *socket_addr, socket_addrm);
 
     printf("hello word\n");
 }
