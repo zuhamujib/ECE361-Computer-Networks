@@ -23,6 +23,9 @@ int main(int argc, char *argv[]) {
     char* listen_port = argv[1];
     int port_value = atoi(listen_port);
 
+    //printf("successfully here\n");
+    //fflush(stdout);
+
     // STEP 2 MAKE THE SOCKET
     int sockfd;
     
@@ -42,7 +45,7 @@ int main(int argc, char *argv[]) {
 
     // From Beej's book for section 5.3
     if (bind(sockfd, (struct sockaddr *)&s_address, sizeof(s_address)) < 0) {
-        printf("BIND FAILED");
+        printf("BIND FAILED\n");
         close(sockfd);
         exit(1);
     }
@@ -55,12 +58,17 @@ int main(int argc, char *argv[]) {
         buffer[i] = 0;
     }
 
+    
+
     struct sockaddr_in c_address;
     socklen_t addr_len = sizeof(c_address);
 
+
+    printf("About to wait for message...\n");
+    fflush(stdout);
     ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
     if (status < 0) {
-        printf("RECVFROM FAIL");
+        printf("RECVFROM FAIL\n");
         exit(0);
     }
 
@@ -77,7 +85,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
-        printf("SENDTO FAIL");
+        printf("SENDTO FAIL\n");
     } 
 
     printf("Message Sent!");
