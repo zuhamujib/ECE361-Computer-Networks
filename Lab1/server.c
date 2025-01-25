@@ -16,22 +16,19 @@ int main(int argc, char *argv[]) {
     // STEP 1: TAKE IN THE LISTEN PORT
     // input should be UDP listen port 
     if (argv[1]==NULL) {
-        printf("NO PORT PROVIDED\n");
+        perror("NO PORT PROVIDED\n");
         exit(1);
     }
 
     char* listen_port = argv[1];
     int port_value = atoi(listen_port);
 
-    //printf("successfully here\n");
-    //fflush(stdout);
-
     // STEP 2 MAKE THE SOCKET
     int sockfd;
     
     // From Beej's book section 5.3
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-        printf("SOCKET ERRORS\n");
+        perror("SOCKET ERRORS\n");
         exit(1);
     }
 
@@ -41,12 +38,12 @@ int main(int argc, char *argv[]) {
     s_address.sin_family = AF_INET;
     s_address.sin_addr.s_addr = htonl(INADDR_ANY); // cant just have sin+addr need to convert the struct to a 32 bit num
     s_address.sin_port = htons(port_value);
-    printf("PORT VALUE: %d\n ", port_value);
+    printf("Using Port Number: %d\n", port_value);
     fflush(stdout);
 
     // From Beej's book for section 5.3
     if (bind(sockfd, (struct sockaddr *)&s_address, sizeof(s_address)) < 0) {
-        printf("BIND FAILED\n");
+        perror("BIND FAILED\n");
         close(sockfd);
         exit(1);
     }
@@ -59,24 +56,24 @@ int main(int argc, char *argv[]) {
         buffer[i] = 0;
     }
 
-    
-
     struct sockaddr_in c_address;
     socklen_t addr_len = sizeof(c_address);
 
-
-    printf("About to wait for message...\n");
+    printf("Starting to wait for message...\n");
     fflush(stdout);
     ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
-    printf("here \n");
     fflush(stdout);
     if (status < 0) {
-        printf("RECVFROM FAIL\n");
+        perror("RECVFROM FAIL\n");
+        close(sockfd);
         exit(0);
     }
 
+    printf("\nMessage Recieved!\n");
+    fflush(stdout);
+
     buffer[1024] = '\0'; // must end in terminating char to read eof
-    printf("message: %s\n", buffer);
+    printf("Sending return message: %s\n", buffer);
 
     // STEP 5: CREATE AND SEND MESSAGE
     char* send_message;
@@ -88,13 +85,15 @@ int main(int argc, char *argv[]) {
     }
 
     if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
-        printf("SENDTO FAIL\n");
+        perror("SENDTO FAIL\n");
+        close(sockfd);
+        exit(0);
     } 
 
-    printf("Message Sent!");
+    printf("Message Sent!\n");
     close(sockfd);
 
-    printf("hello word\n");
+    //printf("hello word\n");
 
 
 
