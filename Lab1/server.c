@@ -41,7 +41,8 @@ int main(int argc, char *argv[]) {
     s_address.sin_family = AF_INET;
     s_address.sin_addr.s_addr = htonl(INADDR_ANY); // cant just have sin+addr need to convert the struct to a 32 bit num
     s_address.sin_port = htons(port_value);
-
+    printf("PORT VALUE: %d\n ", port_value);
+    fflush(stdout);
 
     // From Beej's book for section 5.3
     if (bind(sockfd, (struct sockaddr *)&s_address, sizeof(s_address)) < 0) {
@@ -67,12 +68,14 @@ int main(int argc, char *argv[]) {
     printf("About to wait for message...\n");
     fflush(stdout);
     ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
+    printf("here \n");
+    fflush(stdout);
     if (status < 0) {
         printf("RECVFROM FAIL\n");
         exit(0);
     }
 
-    buffer[1024] = '\n'; // must end in terminating char to read eof
+    buffer[1024] = '\0'; // must end in terminating char to read eof
     printf("message: %s\n", buffer);
 
     // STEP 5: CREATE AND SEND MESSAGE
