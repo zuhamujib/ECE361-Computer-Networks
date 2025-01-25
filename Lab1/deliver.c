@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 
     // ********************************************************************** Step 4
     char* buf;
-    buf = "ftp";
+    buf = "buffer";
     printf("Sending message to server.\n");
     ssize_t bytes_sent = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
