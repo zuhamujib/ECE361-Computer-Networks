@@ -100,3 +100,8 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+
+// TO DO:
+// - fixing print statments and error handling 
+// 
