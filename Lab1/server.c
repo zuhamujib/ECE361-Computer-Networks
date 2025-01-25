@@ -15,54 +15,73 @@ int main(int argc, char *argv[]) {
 
     // STEP 1: TAKE IN THE LISTEN PORT
     // input should be UDP listen port 
-
     if (argv[1]==NULL) {
         printf("NO PORT PROVIDED\n");
         exit(1);
     }
 
-
     char* listen_port = argv[1];
     int port_value = atoi(listen_port);
-    // LATER: make sure to check if this is valid number
 
-    // STEP 2: GET ADDRESS INFO
-    // from Beej's book seciton 5.1 
-    int status;
-    struct addrinfo hints;
-    struct addrinfo *servinfo; // will point to the results
-
-    memset(&hints, 0, sizeof hints); // make sure the struct is empty
-    hints.ai_family = AF_INET; // don't care IPv4 or IPv6
-    hints.ai_socktype = SOCK_DGRAM; // TCP stream sockets
-    hints.ai_flags = AI_PASSIVE; // fill in my IP for me
-    //hints.ai_addr = htons(port_value); // filling in with the port value
-
-    if ((status = getaddrinfo(NULL, listen_port, &hints, &servinfo)) != 0) {
-    fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-    exit(1);
-    }
-
-    // STEP 3: MAKE THE SOCKET
+    // STEP 2 MAKE THE SOCKET
     int sockfd;
     
     // From Beej's book section 5.3
-    if ((sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, 0)) < 0) {
-        printf("errorsocketdidntowrk:");
-        // possibly fix this error more later
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        printf("SOCKET ERRORS\n");
+        exit(1);
     }
 
-    // STEP 4: BIND THE SOCKET
-    // From Beej's book from section 5.3
-    bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen);
-    //does this need to be error checked?
+    // STEP 3: BIND THE SOCKET
+    struct sockaddr_in s_address;
+    memset(&s_address, 0, sizeof(s_address));
+    s_address.sin_family = AF_INET;
+    s_address.sin_addr.s_addr = htonl(INADDR_ANY); // cant just have sin+addr need to convert the struct to a 32 bit num
+    s_address.sin_port = htons(port_value);
 
-    // STEP 5: MUST FREE
-    freeaddrinfo(servinfo);
 
+    // From Beej's book for section 5.3
+    if (bind(sockfd, (struct sockaddr *)&s_address, sizeof(s_address)) < 0) {
+        printf("BIND FAILED");
+        close(sockfd);
+        exit(1);
+    }
 
-// LISTEN BEFORE OR AFTERING FREEING? PROBABLY AFTER
+    // STEP 4: RECIEVE MSG
+    // buffer for the message itself
+    char buffer[1024];
+    // clearing and setting buffer
+    for (int i = 0; i < 1024; i++) {
+        buffer[i] = 0;
+    }
 
+    struct sockaddr_in c_address;
+    socklen_t addr_len = sizeof(c_address);
+
+    ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
+    if (status < 0) {
+        printf("RECVFROM FAIL");
+        exit(0);
+    }
+
+    buffer[1024] = '\n'; // must end in terminating char to read eof
+    printf("message: %s\n", buffer);
+
+    // STEP 5: CREATE AND SEND MESSAGE
+    char* send_message;
+    if (strcmp(buffer, "ftp") == 0) {
+        send_message = "yes";
+    }
+    else {
+        send_message = "no";
+    }
+
+    if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
+        printf("SENDTO FAIL");
+    } 
+
+    printf("Message Sent!");
+    close(sockfd);
 
     printf("hello word\n");
 
@@ -70,41 +89,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
-    // from Beej's book seciton 5 on get addr
-    // int status;
-    // struct addrinfo hints;
-    // struct addrinfo *servinfo; // will point to the results
-
-    // memset(&hints, 0, sizeof hints); // make sure the struct is empty
-    // hints.ai_family = AF_INET; // don't care IPv4 or IPv6
-    // hints.ai_socktype = SOCK_DGRAM; // TCP stream sockets
-    // hints.ai_flags = AI_PASSIVE; // fill in my IP for me
-
-    // if ((status = getaddrinfo(NULL, "3490", &hints, &servinfo)) != 0) {
-    // fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-    // exit(1);
-    // }
-    ////////////////////////////////////////////
-    // must free 
-    // freeaddrinfo(servinfo);
-
-
-
-//     struct addrinfo hints, *res;
-//     int sockfd;
-//     // first, load up address structs with getaddrinfo():
-
-//     memset(&hints, 0, sizeof hints);
-//     hints.ai_family = AF_UNSPEC; // use IPv4 or IPv6, whichever
-//     hints.ai_socktype = SOCK_STREAM;
-//     hints.ai_flags = AI_PASSIVE; // fill in my IP for me
- 
-//     getaddrinfo(NULL, "3490", &hints, &res);
-
-//     // make a socket:
-
-//     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-
-// /   / bind it to the port we passed in to getaddrinfo():
-//     bind(sockfd, res->ai_addr, res->ai_addrlen);
