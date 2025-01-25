@@ -63,7 +63,13 @@ int main(int argc, char* argv[]) {
     char ftp[4];
     printf("Enter the message to be sent in the format:\n");
     printf("ftp <filename>:");
-    scanf("%s %s", ftp, filename);
+    // scanf("%s %s", ftp, filename);
+
+    // Read user input
+    if (scanf("%3s %255s", ftp, filename) != 2) {
+        perror("Invalid input format. Expected: ftp <filename>\n");
+        exit(0);
+    }
 
     
     // checking if the filename entered even exists
@@ -75,6 +81,7 @@ int main(int argc, char* argv[]) {
     // ********************************************************************** Step 4
     char* buf;
     buf = "ftp";
+    printf("Sending message to server.\n");
     ssize_t bytes_sent = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
         printf("Error sending message to server.");
@@ -87,6 +94,7 @@ int main(int argc, char* argv[]) {
     char message_recieved[FILENAME_LEN];
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
+    printf("Waiting message from server.\n");
     ssize_t bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr *)&from_addr, &from_len);
     if (bytes_recieved < 0) {
         printf("Error recieving message.\n");
