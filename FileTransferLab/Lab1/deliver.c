@@ -57,6 +57,8 @@ int main(int argc, char* argv[]) {
     socket_addr.sin_family = AF_INET;    // internet address family
     socket_addr.sin_port = htons(server_port);
     socket_addr.sin_addr = server_address;
+    //printf("PORT VALUE: %d\n ", port_value);
+    //fflush(stdout);
 
     // ********************************************************************** Step 3
     char filename[FILENAME_LEN];
@@ -80,7 +82,7 @@ int main(int argc, char* argv[]) {
 
     // ********************************************************************** Step 4
     char* buf;
-    buf = "ftp";
+    buf = "buffer";
     printf("Sending message to server.\n");
     ssize_t bytes_sent = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
@@ -96,12 +98,14 @@ int main(int argc, char* argv[]) {
     socklen_t from_len = sizeof(from_addr);
     printf("Waiting message from server.\n");
     ssize_t bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr *)&from_addr, &from_len);
+    // printf("here\n");
+    // fflush(stdout);
     if (bytes_recieved < 0) {
         printf("Error recieving message.\n");
     
         exit(0);
     }
-    
+   
     // ********************************************************************** Step 6
     message_recieved[bytes_recieved] = '\0';    // adding a null character at the end to represent a string
 
