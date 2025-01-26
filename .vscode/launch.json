@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": ".",
-      "program": "build/Debug/outDebug",
+      "cwd": "c:/Users/gobli/Documents/ECE361-labs/ECE361-Computer-Networks/FileTransferLab/Lab1",
+      "program": "c:/Users/gobli/Documents/ECE361-labs/ECE361-Computer-Networks/FileTransferLab/Lab1/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
