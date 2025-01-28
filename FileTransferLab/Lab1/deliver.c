@@ -55,6 +55,10 @@ int main(int argc, char* argv[]) {
     inet_pton(AF_INET, argv[1], &server_address);
     int server_port = atoi(argv[2]);
 
+    if (server_port < 0) {
+        perror("Invalid port number\n");
+        exit(0);
+    }
     printf("Number of arguments: %d\n", argc);
 
     for (int i = 0; i < argc; i++) {

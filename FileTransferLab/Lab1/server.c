@@ -23,6 +23,10 @@ int main(int argc, char *argv[]) {
     char* listen_port = argv[1];
     int port_value = atoi(listen_port);
 
+    if (port_value < 0) {
+        perror("Invalid port number\n");
+        exit(0);
+    }
     // STEP 2 MAKE THE SOCKET
     int sockfd;
     
@@ -103,4 +107,3 @@ int main(int argc, char *argv[]) {
 
 // TO DO:
 // - fixing print statments and error handling 
-// 
