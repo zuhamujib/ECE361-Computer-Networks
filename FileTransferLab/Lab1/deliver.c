@@ -75,22 +75,25 @@ int main(int argc, char* argv[]) {
     while (1) {
         printf("Enter the message to be sent in the format: ftp <filename>\n");
 
-        if (scanf("%3s %255s", ftp, filename) == 2) {
+        int arguments = scanf("%3s %255s", ftp, filename);
+        if (arguments == 2) {
             // making sure the input format is exactly "ftp <filename>"
             if (strcmp(ftp, "ftp") == 0) {
                 // Break the loop if the input is in the correct format
                 break;
             }
+        } else if (arguments == 1) {
+            printf("Invalid input: Filename is missing.\n");
+        } else {
+            // Clearing the input buffer so input from the terminal can be read again
+            fflush(stdin);
+            printf("Invalid input format. Expected: ftp <filename>\n");
         }
-
-        // Clearing the input buffer so input from the terminal can be read again
-        fflush(stdin);
-        printf("Invalid input format. Expected: ftp <filename>\n");
     }
 
     // checking if the filename entered even exists
     if (access(filename, F_OK) != 0) {
-        printf("Invalid filename: file does not exist");
+        printf("Invalid filename: file does not exist.\n");
         exit(0);
     }
 
@@ -101,7 +104,7 @@ int main(int argc, char* argv[]) {
     printf("Sending message to server.\n");
     ssize_t bytes_sent = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
-        printf("Error sending message to server.");
+        printf("Error sending message to server.\n");
         exit(0);
     }
 
