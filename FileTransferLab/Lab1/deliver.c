@@ -14,7 +14,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define FILENAME_LEN 256
+#define FILE_LEN 256
+#define INPUT_LEN 128
 
 // To start communication with a client:
 //      1. Create a socket
@@ -68,33 +69,34 @@ int main(int argc, char* argv[]) {
 
     // ********************************************************************** Step
     // 3
-    char filename[FILENAME_LEN];
-    char ftp[4];
+    char filename[INPUT_LEN];
+    char ftp[INPUT_LEN];
+    char input[FILE_LEN];   // reading the full user input
 
-    // Read user input
+    // Read user input constantly until a correct input is input format is given
     while (1) {
         printf("Enter the message to be sent in the format: ftp <filename>\n");
 
-        // Read input and ensure exactly "ftp <filename>" format
-        if (scanf("%3s %255s", ftp, filename) == 2) {
-            if (strcmp(ftp, "ftp") == 0) {
-                break;  // valid input
-            }
-            else if (strlen(ftp) < 4) {
-                printf("Too little charcters.\n");
+        if (fgets(input, sizeof(input), stdin) != NULL) {
+            input[strcspn(input, "\n")] = '\0'; // m,aking sure to remove any enldine characters instead ending it with a eof character for string
+
+            // Parse the input and check for exactly two inputs
+            if (sscanf(input, "%255s %255s", ftp, filename) == 2 && strcmp(ftp, "ftp") == 0) {
+                // printf("Input 1: %s\n", ftp);
+                // printf("Input 2: %s\n", filename);
+                break;
             } else {
-                printf("Input not starting with ftp.\n");
+                printf("Incorrect format of input.\n");
             }
         } else {
-            printf("Invalid input format. Expected: ftp <filename>\n");
+            printf("Failed to read input.\n");
         }
-        while (getchar() != '\n'); // Clear input buffer everytime
-        fflush(stdin);
+        fflush(stdin);  // restting the user input so no errors happen
     }
 
     // checking if the filename entered even exists
     if (access(filename, F_OK) != 0) {
-        printf("Invalid filename: file does not exist.\n");
+        printf("filename does not exist.\n");
         exit(0);
     }
 
@@ -110,20 +112,19 @@ int main(int argc, char* argv[]) {
     // ********************************************************************** Step
     // 5
     // waiting for server response
-    char message_recieved[FILENAME_LEN];
+    char message_recieved[FILE_LEN];
     struct sockaddr_in from_addr;
     socklen_t from_len = sizeof(from_addr);
     printf("Waiting message from server.\n");
     ssize_t bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len);
     if (bytes_recieved < 0) {
-        printf("Error recieving message.\n");
-        printf("here!\n");
+        printf("Error recieving message from server.\n");
         exit(0);
     }
 
     // ********************************************************************** Step
     // 6
-    // message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
+    message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
 
     if (strcmp(message_recieved, "yes") == 0) {
         printf("A file transfer can start.\n");
