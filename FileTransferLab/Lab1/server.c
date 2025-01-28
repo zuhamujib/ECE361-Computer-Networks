@@ -83,7 +83,8 @@ int main(int argc, char *argv[]) {
     else {
         send_message = "no";
     }
-
+    // buffer[1024] = '\0'; // must end in terminating char to read eof
+    printf("Sending return message: %s\n", send_message);
     if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
         perror("SENDTO FAIL\n");
         close(sockfd);

@@ -75,20 +75,21 @@ int main(int argc, char* argv[]) {
     while (1) {
         printf("Enter the message to be sent in the format: ftp <filename>\n");
 
-        int arguments = scanf("%3s %255s", ftp, filename);
-        if (arguments == 2) {
-            // making sure the input format is exactly "ftp <filename>"
+        // Read input and ensure exactly "ftp <filename>" format
+        if (scanf("%3s %255s", ftp, filename) == 2) {
             if (strcmp(ftp, "ftp") == 0) {
-                // Break the loop if the input is in the correct format
-                break;
+                break;  // valid input
             }
-        } else if (arguments == 1) {
-            printf("Invalid input: Filename is missing.\n");
+            else if (strlen(ftp) < 4) {
+                printf("Too little charcters.\n");
+            } else {
+                printf("Input not starting with ftp.\n");
+            }
         } else {
-            // Clearing the input buffer so input from the terminal can be read again
-            fflush(stdin);
             printf("Invalid input format. Expected: ftp <filename>\n");
         }
+        while (getchar() != '\n'); // Clear input buffer everytime
+        fflush(stdin);
     }
 
     // checking if the filename entered even exists
@@ -99,10 +100,8 @@ int main(int argc, char* argv[]) {
 
     // ********************************************************************** Step
     // 4
-    char* buf;
-    buf = "buffer";
     printf("Sending message to server.\n");
-    ssize_t bytes_sent = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
+    ssize_t bytes_sent = sendto(sockfd, ftp, strlen(ftp), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
         printf("Error sending message to server.\n");
         exit(0);
@@ -118,13 +117,13 @@ int main(int argc, char* argv[]) {
     ssize_t bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len);
     if (bytes_recieved < 0) {
         printf("Error recieving message.\n");
-
+        printf("here!\n");
         exit(0);
     }
 
     // ********************************************************************** Step
     // 6
-    message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
+    // message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
 
     if (strcmp(message_recieved, "yes") == 0) {
         printf("A file transfer can start.\n");
