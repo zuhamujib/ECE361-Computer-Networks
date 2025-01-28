@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 
     if (port_value < 0) {
         perror("Invalid port number\n");
-        exit(0);
+        exit(1);
     }
     // STEP 2 MAKE THE SOCKET
     int sockfd;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     if (status < 0) {
         perror("RECVFROM FAIL\n");
         close(sockfd);
-        exit(0);
+        exit(1);
     }
 
     printf("\nMessage Recieved!\n");
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
         perror("SENDTO FAIL\n");
         close(sockfd);
-        exit(0);
+        exit(1);
     } 
 
     printf("Message Sent!\n");

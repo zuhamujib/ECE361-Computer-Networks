@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
 
     if (server_port < 0) {
         perror("Invalid port number\n");
-        exit(0);
+        exit(EXIT_FAILURE);
     }
     printf("Number of arguments: %d\n", argc);
 
@@ -101,7 +101,7 @@ int main(int argc, char* argv[]) {
     // checking if the filename entered even exists
     if (access(filename, F_OK) != 0) {
         printf("filename does not exist.\n");
-        exit(0);
+        exit(1);
     }
 
     // ********************************************************************** Step
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     ssize_t bytes_sent = sendto(sockfd, ftp, strlen(ftp), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
         printf("Error sending message to server.\n");
-        exit(0);
+        exit(1);
     }
 
     // ********************************************************************** Step
@@ -123,7 +123,7 @@ int main(int argc, char* argv[]) {
     ssize_t bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len);
     if (bytes_recieved < 0) {
         printf("Error recieving message from server.\n");
-        exit(0);
+        exit(1);
     }
 
     // ********************************************************************** Step
@@ -134,7 +134,7 @@ int main(int argc, char* argv[]) {
         printf("A file transfer can start.\n");
     } else {
         perror("Error recieveing message\n");
-        exit(0);
+        exit(1);
     }
 
     // Close the socket
