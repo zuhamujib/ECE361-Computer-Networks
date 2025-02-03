@@ -56,54 +56,52 @@ int main(int argc, char *argv[]) {
     // buffer for the message itself
     char buffer[1024];
     // clearing and setting buffer
-    for (int i = 0; i < 1024; i++) {
-        buffer[i] = 0;
-    }
 
-    struct sockaddr_in c_address;
-    socklen_t addr_len = sizeof(c_address);
+    while (1) {
 
-    printf("Starting to wait for message...\n");
-    fflush(stdout);
-    ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
-    fflush(stdout);
-    if (status < 0) {
-        perror("RECVFROM FAIL\n");
-        close(sockfd);
-        exit(1);
-    }
+    
+        for (int i = 0; i < 1024; i++) {
+            buffer[i] = 0;
+        }
 
-    printf("\nMessage Recieved!\n");
-    fflush(stdout);
+        struct sockaddr_in c_address;
+        socklen_t addr_len = sizeof(c_address);
 
-    buffer[1024] = '\0'; // must end in terminating char to read eof
-    printf("Sending return message: %s\n", buffer);
+        printf("Starting to wait for message...\n");
+        fflush(stdout);
+        ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
+        fflush(stdout);
+        if (status < 0) {
+            perror("RECVFROM FAIL\n");
+            close(sockfd);
+            exit(1);
+        }
 
-    // STEP 5: CREATE AND SEND MESSAGE
-    char* send_message;
-    if (strcmp(buffer, "ftp") == 0) {
-        send_message = "yes";
-    }
-    else {
-        send_message = "no";
+        printf("\nMessage Recieved!\n");
+        fflush(stdout);
+
+        buffer[1024] = '\0'; // must end in terminating char to read eof
+        printf("Sending return message: %s\n", buffer);
+
+        // STEP 5: CREATE AND SEND MESSAGE
+        char* send_message;
+        if (strcmp(buffer, "ftp") == 0) {
+            send_message = "yes";
+        }
+        else {
+            send_message = "no";
+        }
+        
+        if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
+            perror("SENDTO FAIL\n");
+            close(sockfd);
+            exit(1);
+        } 
+
+        printf("Message Sent!\n\n");
+
     }
     
-    if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
-        perror("SENDTO FAIL\n");
-        close(sockfd);
-        exit(1);
-    } 
-
-    printf("Message Sent!\n");
     close(sockfd);
-
-    //printf("hello word\n");
-
-
-
     return 0;
 }
-
-
-// TO DO:
-// - fixing print statments and error handling 
