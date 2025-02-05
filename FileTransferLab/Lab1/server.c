@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <stdbool.h>
 #include "packet.h"
 
 int main(int argc, char *argv[]) {
@@ -56,11 +57,19 @@ int main(int argc, char *argv[]) {
     // STEP 4: RECIEVE MSG
     // buffer for the message itself
     char buffer[1024];
-    // clearing and setting buffer
+    
+
+    // STEP 5: PREPARING FILE INFORMATION 
+    FILE *file = NULL;
+    unsigned int next_frag = 1;
+    unsigned int total_frags = 0;
+    char current_filename[256] = {0};
+
 
     while (1) {
 
     
+        // STEP 6: RETRIEVE OUR MSG FROM CLIENT
         for (int i = 0; i < 1024; i++) {
             buffer[i] = 0;
         }
@@ -68,8 +77,10 @@ int main(int argc, char *argv[]) {
         struct sockaddr_in c_address;
         socklen_t addr_len = sizeof(c_address);
 
-        printf("Starting to wait for message...\n");
+        printf("Starting to wait for packets...\n");
         fflush(stdout);
+
+
         ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
         fflush(stdout);
         if (status < 0) {
@@ -78,31 +89,97 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        printf("\nMessage Recieved!\n");
+        printf("\nPacket Recieved! \n");
         fflush(stdout);
 
-        buffer[1024] = '\0'; // must end in terminating char to read eof
-        printf("Sending return message: %s\n", buffer);
 
-        // STEP 5: CREATE AND SEND MESSAGE
-        char* send_message;
-        if (strcmp(buffer, "ftp") == 0) {
-            send_message = "yes";
+        // STEP 7: BEGIN PARSING OUR PACKET
+        // dont forget to eventually error check this
+        struct packet pkt;
+        sscanf(buffer, "%u:%u:%u:%255[^:]:", &pkt.total_frag, &pkt.frag_no, &pkt.size, pkt.filename);
+        // the 225 essentually takes in the file name of a max 255 but also it will stop if it reaches a :
+
+        // retrieveing the actual data itsef (the next colon)
+        char *file_data = strrchr(buffer, ':') + 1;
+        // this hopefully should get us the last instance of the colon and one past it to be the file data
+        memcpy(pkt.filedata, file_data, pkt.size);
+
+        // STEP 8: FILE WRITING 
+        // first we check if we have a new file, new file number or new filename
+        if (pkt.frag_no == 1 || strcmp(current_filename, pkt.filename) != 0) {
+            // if previous file exists or is open we close it 
+            if (file) {
+                fclose(file);
+                printf("File %s closed. \n", current_filename);
+            }
+
+            // copy new file name to our current file name variable
+            strncpy(current_filename, pkt.filename, sizeof(current_filename)-1);
+
+            // create the file and start writing
+            file = fopen(current_filename, "wb");
+            if (!file) {
+                perror("ERROR CRETAING FILE");
+                exit(1);
+            }
+
+            // update remaining important info
+            total_frags = pkt.total_frag;
+            if (pkt.total_frag > 1) {
+                next_frag = 2;
+            } 
+            // the next frag we expect
         }
-        else {
-            send_message = "no";
+
+        // check if the next expected packet
+        if (pkt.frag_no == next_frag) {
+            fwrite(pkt.filedata, 1, pkt.size, file);
+            next_frag++;
         }
-        
+        else
+         {
+            printf("ORDER PROBLEM");
+            exit(1);
+         }
+
+         // STEP 9: SEND ACK
+        char send_message[20];
+        snprintf(send_message, sizeof(send_message), "ACK:%u", pkt.frag_no);
         if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
             perror("SENDTO FAIL\n");
             close(sockfd);
             exit(1);
         } 
 
-        printf("Message Sent!\n\n");
+        // checking if file need to be closed, and resseting all info
+        if (pkt.frag_no == total_frags) {
+            fclose(file);
+            printf("File completed transferring!\n");
+            file = NULL;
+            next_frag = 1;
+        }
 
     }
     
     close(sockfd);
     return 0;
 }
+
+
+// Essentially 3 Steps:
+// 1. Retrieve the message; retrieve and parse the incoming packets
+// 2. determine if its a new packet using fragment number
+    // if one is the packet number, create a new file for this 
+    // if non one packet number, check if file exists
+        // if files already exists append the packet to the new file
+        // if file doesnt exist error 
+// 3. If the message was sent send back an ACK
+
+
+// Many possible errors and areas of concern:
+//      parsing through to recieve file data correct?
+//      sending ack as packet or is msg just fine
+//      dont know if next packet number thing is correctly implemented
+//      check all data setting
+//      add in error checking
+//      memcpy used correct?
