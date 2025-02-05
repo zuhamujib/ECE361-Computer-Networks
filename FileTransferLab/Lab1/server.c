@@ -183,3 +183,6 @@ int main(int argc, char *argv[]) {
 //      check all data setting
 //      add in error checking
 //      memcpy used correct?
+//      MAJOR CONCERN: IF WE SEND A FILE THRU DELIVER AND WE OPNE IT IN SERVER ASSUMING 
+//      IT DOESNT EXIST EVEN THO THE FILES ARE IN THE SAME FOLDER THIS WILL CAUSE SOME PROBLES FOR US
+//      POSSIBLY NEED TO SEND IN FILE FORM DIFFERENT FOLDER WHEN TESTING
