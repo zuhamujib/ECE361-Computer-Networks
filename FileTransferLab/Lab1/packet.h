@@ -12,5 +12,5 @@ struct packet {
     char* filename;
     char filedata[1000]; 
 };
-
+ 
 #endif
