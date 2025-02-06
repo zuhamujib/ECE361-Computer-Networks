@@ -56,7 +56,7 @@ the first part of the packet before data is really a string.
 int main(int argc, char* argv[]) {
     // STEP 1 **********************************************************************
 
-    if (argv[1] == NULL || argv[2] == NULL) {
+    if (argc < 2) {
         perror("INVALID EXECUTION COMMAND\n");
         exit(1);
     }
@@ -164,7 +164,7 @@ int main(int argc, char* argv[]) {
     int num_packets = 1;
     size_t size;
     int retry = 0;
-    while (!file) {
+    while (!feof(file)) {
         if (!retry) {
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
@@ -174,9 +174,14 @@ int main(int argc, char* argv[]) {
         pack.frag_no = num_packets;
         pack.size = size;
         strcpy(pack.filename, filename);
-       
+        memcpy(pack.filedata, buffer, size); // Copy the file data to packet.filedata
+        
+        for (int i = 0; i < size; i++) {
+            printf()
+        }
+        
         printf("Sending message to server.\n");  // send the packet to server
-        ssize_t bytes_sent = sendto(sockfd, ftp, strlen(ftp), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
+        ssize_t bytes_sent = sendto(sockfd, pack.filedata, pack.size, 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
         if (bytes_sent < 0) {
             printf("Error sending message to server.\n");
             exit(1);
