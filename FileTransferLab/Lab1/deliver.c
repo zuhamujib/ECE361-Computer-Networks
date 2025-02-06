@@ -14,17 +14,37 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "deliver.h"
+
 #define FILE_LEN 256
 #define INPUT_LEN 128
 
-// To start communication with a client:
-//      1. Create a socket
-//          a. int socket(int domain, int type, int protocol);
-//      2. Get the server address info
-//      3. Ask user for input from the terminal
-//      4. Send the messgage
-//      5. Wait for the response from the server
-//      6. Handle the server response
+// Lab 1
+/*
+To start communication with a client:
+     1. Create a socket
+         a. int socket(int domain, int type, int protocol);
+     2. Get the server address info
+     3. Ask user for input from the terminal
+     4. Send the messgage
+     5. Wait for the response from the server
+     6. Handle the server response
+        a. Success! -> 7.
+        b. Failure:( -> 10.
+     7. Find the file size
+     8. Segment into packets of size 1000 bytes
+     9. Send packet stop-and-wait for acknowledgement
+     10. Close the socket
+*/
+
+
+// Lab 2
+/*
+Please remember that while the beginning of the packet is in fact just plain text, the data
+portion of the packet may in fact contain binary data. This means that you should not use
+string manipulation functions available in C for the data field or for the whole packet. Only
+the first part of the packet before data is really a string.
+*/
 
 // JUST SOME ADDITIONAL NOTES
 // remember: argv[0] contains the name of the current program (exe)
@@ -33,8 +53,7 @@
 // deliver <server address> <server port number>
 
 int main(int argc, char* argv[]) {
-    // ********************************************************************** Step
-    // 1
+    // ********************************************************************** Step 1
 
     if (argv[1] == NULL || argv[2] == NULL) {
         perror("INVALID EXECUTION COMMAND\n");
@@ -48,9 +67,7 @@ int main(int argc, char* argv[]) {
         // possibly fix this error more later
     }
 
-    // ********************************************************************** Step
-    // 2 
-
+    // ********************************************************************** Step 2 
     struct in_addr server_address;
     inet_pton(AF_INET, argv[1], &server_address);
     int server_port = atoi(argv[2]);
@@ -71,8 +88,7 @@ int main(int argc, char* argv[]) {
     socket_addr.sin_port = htons(server_port);
     socket_addr.sin_addr = server_address;
 
-    // ********************************************************************** Step
-    // 3
+    // ********************************************************************** Step 3
     char filename[INPUT_LEN];
     char ftp[INPUT_LEN];
     char input[FILE_LEN];   // reading the full user input
@@ -104,8 +120,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    // ********************************************************************** Step
-    // 4
+    // ********************************************************************** Step 4
     printf("Sending message to server.\n");
     ssize_t bytes_sent = sendto(sockfd, ftp, strlen(ftp), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
     if (bytes_sent < 0) {
@@ -113,8 +128,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    // ********************************************************************** Step
-    // 5
+    // ********************************************************************** Step 5
     // waiting for server response
     char message_recieved[FILE_LEN];
     struct sockaddr_in from_addr;
@@ -126,8 +140,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    // ********************************************************************** Step
-    // 6
+    // ********************************************************************** Step 6
     message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
 
     if (strcmp(message_recieved, "yes") == 0) {
@@ -136,6 +149,54 @@ int main(int argc, char* argv[]) {
         perror("Error recieveing message\n");
         exit(1);
     }
+
+    // ********************************************************************** Step 7
+    FILE *file = fopen(filename);
+    if (!file) {
+        printf("Error reading file.\n");
+        return -1;
+    }
+
+    char buffer[NUM_FRAGMENTS] = {0};    // char is 1 byte
+    int num_packets = 1;
+    size_t size;
+    while (!file) {
+        size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading 1000 bytes
+
+        // build a packet
+        struct packet pack;
+        pack.total_frag = 1;
+        pack.frag_no = num_packets;
+        pack.size = size;
+        strcpy(pack.filename, filename);
+        
+
+        // send the packet to server
+
+        // wait for acknowledgement
+        bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len);
+        if (bytes_recieved < 0) {
+            printf("Error recieving message from server.\n");
+            exit(1);
+        }
+        message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
+
+        if (strcmp(message_recieved, "ACK") == 0) {
+            printf("packet %d acknowledged\n", num_packets);
+            num_packets++;
+        } else if (strcmp(message_recieved, "NOT_ACK") == 0) {
+            printf("packet not acknowledged, sending again!\n");
+            buffer -= NUM_FRAGMENTS;
+        }
+    }
+
+    if (feof(file)) {
+        printf("End of file reached.\n");
+    } else if (ferror(file)) {
+        perror("Error reading file.\n")
+    }
+
+    fclose(file);
 
     // Close the socket
     close(sockfd);
