@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
             initial[1024] = '\0'; // must end in terminating char to read eof
             // STEP 5: CREATE AND SEND MESSAGE
             char* send_message;
-            if (strcmp(buffer, "ftp") == 0) {
+            if (strcmp(initial, "ftp") == 0) {
                 send_message = "yes";
             }
             else {
