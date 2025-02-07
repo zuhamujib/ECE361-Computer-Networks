@@ -153,7 +153,8 @@ int main(int argc, char* argv[]) {
     }
 
     // STEP 7 - 9 **********************************************************************
-    printf("Starting to read file\n");
+    printf("here1\n");
+    fflush(stdout);
     FILE *file = fopen(filename, "r");
     if (!file) {
         perror("Error reading file.\n");
@@ -169,10 +170,16 @@ int main(int argc, char* argv[]) {
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
 
+
+        printf("here2\n");
+        fflush(stdout);
         struct packet pack; // build a packet
         pack.total_frag = 1;
         pack.frag_no = num_packets;
         pack.size = size;
+
+        printf("here2.5\n");
+        fflush(stdout);
         strcpy(pack.filename, filename);
         memcpy(pack.filedata, buffer, size); // Copy the file data to packet.filedata
         
@@ -180,6 +187,9 @@ int main(int argc, char* argv[]) {
         for (int i = 0; i < size; i++) {
             printf("%c", pack.filedata[i]);
         }
+
+        printf("here3\n");
+        fflush(stdout);
 
         printf("Sending message to server.\n");  // send the packet to server
         ssize_t bytes_sent = sendto(sockfd, pack.filedata, pack.size, 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
@@ -195,6 +205,9 @@ int main(int argc, char* argv[]) {
         }
         message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
 
+
+        printf("here4\n");
+        fflush(stdout);
         if (strcmp(message_recieved, "ACK") == 0) {
             printf("packet %d acknowledged\n", num_packets);
             num_packets++;

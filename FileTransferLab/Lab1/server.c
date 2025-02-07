@@ -149,17 +149,18 @@ int main(int argc, char *argv[]) {
         struct packet pkt;
         sscanf(buffer, "%u:%u:%u:%255[^:]:", &pkt.total_frag, &pkt.frag_no, &pkt.size, pkt.filename);
         // the 225 essentually takes in the file name of a max 255 but also it will stop if it reaches a :
-
+        printf("%s\n", buffer);
+    
 
         printf("here1\n");
         fflush(stdout);
         // retrieveing the actual data itsef (the next colon)
         char *file_data = strrchr(buffer, ':') + 1;
         // this hopefully should get us the last instance of the colon and one past it to be the file data
-        //memcpy(pkt.filedata, file_data, pkt.size);
+        memcpy(pkt.filedata, file_data, pkt.size);
 
-        printf("here2!");
-        fflush(stdout);
+        printf("here2!\n");
+        //fflush(stdout);
 
         // STEP 8: FILE WRITING 
         // first we check if we have a new file, new file number or new filename
@@ -170,6 +171,9 @@ int main(int argc, char *argv[]) {
                 printf("File %s closed. \n", current_filename);
             }
 
+
+            printf("here3\n");
+            fflush(stdout);
             // copy new file name to our current file name variable
             strncpy(current_filename, pkt.filename, sizeof(current_filename)-1);
 
