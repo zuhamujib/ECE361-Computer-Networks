@@ -162,6 +162,7 @@ int main(int argc, char* argv[]) {
     }
 
     char buffer[NUM_FRAGMENTS] = {0};    // char is 1 byte
+    char send_buffer[NUM_FRAGMENTS + 100];  // the buffer storing the file header and the data combined ro be sent as a packet
     int num_packets = 1;
     size_t size;
     int retry = 0;
@@ -169,7 +170,6 @@ int main(int argc, char* argv[]) {
         if (!retry) {
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
-
 
         printf("here2\n");
         fflush(stdout);
@@ -180,19 +180,37 @@ int main(int argc, char* argv[]) {
 
         printf("here2.5\n");
         fflush(stdout);
-        strcpy(pack.filename, filename);
-        memcpy(pack.filedata, buffer, size); // Copy the file data to packet.filedata
+        // strcpy(pack.filename, filename);
         
+        pack.filename = malloc(strlen(filename) + 1);  // Allocate memory (+1 for '\0')
+        if (pack.filename == NULL) {
+            perror("Memory allocation failed");
+            exit(1);
+        }
+
+        printf("here2.5\n");
+        memcpy(pack.filename, filename, strlen(filename) + 1);  // Copy filename safely
+        printf("here2.6\n");
+        memcpy(pack.filedata, buffer, size); // Copy the file data to packet.filedata
+
         printf("File data: \n");
+        
         for (int i = 0; i < size; i++) {
             printf("%c", pack.filedata[i]);
         }
+        
+        int header = snprintf(send_buffer, sizeof(send_buffer), "%u:%u:%u:%s:", pack.total_frag, pack.frag_no, pack.size, pack.filename);   // putting together the buffer to send all thr packet data
+    
+        memcpy(send_buffer + header, pack.filedata, pack.size); // copying the file data into memory after the header
 
         printf("here3\n");
         fflush(stdout);
 
-        printf("Sending message to server.\n");  // send the packet to server
-        ssize_t bytes_sent = sendto(sockfd, pack.filedata, pack.size, 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
+        // printf("Sending message to server.\n");  // send the packet to server
+        
+        printf("Sending packet %d to server\n", num_packets);
+
+        ssize_t bytes_sent = sendto(sockfd, send_buffer, sizeof(send_buffer), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
         if (bytes_sent < 0) {
             printf("Error sending message to server.\n");
             exit(1);
