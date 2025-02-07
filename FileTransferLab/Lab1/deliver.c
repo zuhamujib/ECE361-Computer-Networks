@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
     }
 
     // STEP 7 - 9 **********************************************************************
-
+    printf("Starting to read file\n");
     FILE *file = fopen(filename, "r");
     if (!file) {
         perror("Error reading file.\n");
