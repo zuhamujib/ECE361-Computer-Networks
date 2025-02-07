@@ -65,10 +65,61 @@ int main(int argc, char *argv[]) {
     unsigned int total_frags = 0;
     char current_filename[256] = {0};
 
+    bool connection = false;
+
+    char initial[1024]; 
+
 
     while (1) {
 
+
+        // SETTING UP INITIAL CONNECTION
+        if (!connection) {
+
+            for (int i = 0; i < 1024; i++) {
+                initial[i] = 0;
+            }
+
+            struct sockaddr_in c_address;
+            socklen_t addr_len = sizeof(c_address);
+
+            printf("Waiting for inital connection...\n");
+            fflush(stdout);
+            ssize_t status = recvfrom(sockfd, initial, sizeof(initial)-1, 0, (struct sockaddr *)&c_address, &addr_len);
+            if (status < 0) {
+                perror("RECVFROM FAIL\n");
+                close(sockfd);
+                exit(1);
+            }
+
+            printf("Initial Connection Recieved!\n");
+            fflush(stdout);
+
+            initial[1024] = '\0'; // must end in terminating char to read eof
+            // STEP 5: CREATE AND SEND MESSAGE
+            char* send_message;
+            if (strcmp(initial, "ftp") == 0) {
+                send_message = "yes";
+            }
+            else {
+                send_message = "no";
+            }
+
+            if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
+                perror("SENDTO FAIL\n");
+                close(sockfd);
+                exit(0);
+                exit(1);
+            } 
+
+            printf("Connection Complete!\n");
+
+            connection = true;
+        }
     
+
+        printf("READY TO RECIEVE PACKETS\n\n");
+        fflush(stdout);
         // STEP 6: RETRIEVE OUR MSG FROM CLIENT
         for (int i = 0; i < 1024; i++) {
             buffer[i] = 0;
@@ -99,10 +150,16 @@ int main(int argc, char *argv[]) {
         sscanf(buffer, "%u:%u:%u:%255[^:]:", &pkt.total_frag, &pkt.frag_no, &pkt.size, pkt.filename);
         // the 225 essentually takes in the file name of a max 255 but also it will stop if it reaches a :
 
+
+        printf("here1\n");
+        fflush(stdout);
         // retrieveing the actual data itsef (the next colon)
         char *file_data = strrchr(buffer, ':') + 1;
         // this hopefully should get us the last instance of the colon and one past it to be the file data
-        memcpy(pkt.filedata, file_data, pkt.size);
+        //memcpy(pkt.filedata, file_data, pkt.size);
+
+        printf("here2!");
+        fflush(stdout);
 
         // STEP 8: FILE WRITING 
         // first we check if we have a new file, new file number or new filename
@@ -155,6 +212,7 @@ int main(int argc, char *argv[]) {
         if (pkt.frag_no == total_frags) {
             fclose(file);
             printf("File completed transferring!\n");
+            connection = false;
             file = NULL;
             next_frag = 1;
         }
