@@ -176,10 +176,11 @@ int main(int argc, char* argv[]) {
         strcpy(pack.filename, filename);
         memcpy(pack.filedata, buffer, size); // Copy the file data to packet.filedata
         
+        printf("File data: \n");
         for (int i = 0; i < size; i++) {
-            printf()
+            printf("%c", pack.filedata[i]);
         }
-        
+
         printf("Sending message to server.\n");  // send the packet to server
         ssize_t bytes_sent = sendto(sockfd, pack.filedata, pack.size, 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
         if (bytes_sent < 0) {
