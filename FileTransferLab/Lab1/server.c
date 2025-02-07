@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
             struct sockaddr_in c_address;
             socklen_t addr_len = sizeof(c_address);
 
-            printf("Waiting for inital connection...\n");
+            printf("Waiting for inital connection...");
             fflush(stdout);
             ssize_t status = recvfrom(sockfd, initial, sizeof(initial)-1, 0, (struct sockaddr *)&c_address, &addr_len);
             if (status < 0) {
@@ -91,9 +91,6 @@ int main(int argc, char *argv[]) {
                 close(sockfd);
                 exit(1);
             }
-
-            printf("Initial Connection Recieved!\n");
-            fflush(stdout);
 
             initial[1024] = '\0'; // must end in terminating char to read eof
             // STEP 5: CREATE AND SEND MESSAGE
@@ -128,10 +125,6 @@ int main(int argc, char *argv[]) {
         struct sockaddr_in c_address;
         socklen_t addr_len = sizeof(c_address);
 
-        printf("Starting to wait for packets...\n");
-        fflush(stdout);
-
-
         ssize_t status = recvfrom(sockfd, buffer, sizeof(buffer)-1, 0, (struct sockaddr *)&c_address, &addr_len);
         fflush(stdout);
         if (status < 0) {
@@ -140,27 +133,47 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        printf("\nPacket Recieved! \n");
+        printf("Packet Recieved! \n");
         fflush(stdout);
 
 
         // STEP 7: BEGIN PARSING OUR PACKET
         // dont forget to eventually error check this
         struct packet pkt;
-        sscanf(buffer, "%u:%u:%u:%255[^:]:", &pkt.total_frag, &pkt.frag_no, &pkt.size, pkt.filename);
-        // the 225 essentually takes in the file name of a max 255 but also it will stop if it reaches a :
+        printf("-------------------------------------------------------------------------");
         printf("%s\n", buffer);
-    
+        printf("-------------------------------------------------------------------------");
 
-        printf("here1\n");
+        char* parse;
+        char* packet_info = buffer;
+
+        parse = strtok(packet_info, ":");
+        pkt.total_frag = atoi(parse);
+
+        printf("\nTOTAL PACKETS: %d\n", pkt.total_frag);
+
+        parse = strtok(NULL, ":");
+        pkt.frag_no = atoi(parse);
+
+        printf("PACKET NUM:%d\n", pkt.frag_no);
         fflush(stdout);
-        // retrieveing the actual data itsef (the next colon)
-        char *file_data = strrchr(buffer, ':') + 1;
-        // this hopefully should get us the last instance of the colon and one past it to be the file data
-        memcpy(pkt.filedata, file_data, pkt.size);
 
-        printf("here2!\n");
-        //fflush(stdout);
+        parse = strtok(NULL, ":");
+        pkt.size = atoi(parse);
+
+        printf("PACKET SIZE:%d\n", pkt.size);
+        fflush(stdout);
+
+        parse = strtok(NULL, ":");
+        pkt.filename = malloc(strlen(parse)+1);
+        memcpy(pkt.filename, parse, strlen(parse)+1);
+        printf("FILENAME: %s\n", pkt.filename);
+        fflush(stdout);
+        
+
+
+        parse = strtok(NULL, "\0");
+        memcpy(pkt.filedata, parse, pkt.size);
 
         // STEP 8: FILE WRITING 
         // first we check if we have a new file, new file number or new filename
@@ -171,14 +184,14 @@ int main(int argc, char *argv[]) {
                 printf("File %s closed. \n", current_filename);
             }
 
+            memcpy(current_filename, pkt.filename, strlen(pkt.filename)+1);
 
-            printf("here3\n");
             fflush(stdout);
-            // copy new file name to our current file name variable
-            strncpy(current_filename, pkt.filename, sizeof(current_filename)-1);
-
             // create the file and start writing
-            file = fopen(current_filename, "wb");
+
+            char filepath[100];
+            sprintf(filepath, "temp/%s", current_filename);
+            file = fopen(filepath, "ab");
             if (!file) {
                 perror("ERROR CRETAING FILE");
                 exit(1);
@@ -214,8 +227,10 @@ int main(int argc, char *argv[]) {
 
         // checking if file need to be closed, and resseting all info
         if (pkt.frag_no == total_frags) {
+            fwrite(pkt.filedata, 1, pkt.size, file);
+            next_frag++;
             fclose(file);
-            printf("File completed transferring!\n");
+            printf("File completed transferring!\n\n");
             connection = false;
             file = NULL;
             next_frag = 1;
