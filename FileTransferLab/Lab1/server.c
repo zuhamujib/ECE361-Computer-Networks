@@ -197,9 +197,6 @@ int main(int argc, char *argv[]) {
 
             // update remaining important info
             total_frags = pkt.total_frag;
-            if (pkt.total_frag > 1) {
-                next_frag = 2;
-            } 
             // the next frag we expect
         }
         
