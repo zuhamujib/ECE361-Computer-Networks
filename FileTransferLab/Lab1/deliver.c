@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <time.h>
+#include <math.h>
 
 #include "packet.h"
 
@@ -95,6 +97,9 @@ int main(int argc, char* argv[]) {
     char filename[INPUT_LEN];
     char ftp[INPUT_LEN];
     char input[FILE_LEN];   // reading the full user input
+
+    long RTT = 0.0;
+    struct timespec start_time , end_time;
 
     while (1) {     // Read user input constantly until a correct input is input format is given
         printf("Enter the message to be sent in the format: ftp <filename>\n");
@@ -179,15 +184,15 @@ int main(int argc, char* argv[]) {
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
 
-        printf("here2\n");
-        fflush(stdout);
+        // printf("here2\n");
+        // fflush(stdout);
         struct packet pack; // build a packet
         pack.total_frag = total_frags;
         pack.frag_no = num_packets;
         pack.size = size;
 
-        printf("here2.5\n");
-        fflush(stdout);
+        // printf("here2.5\n");
+        // fflush(stdout);
         // strcpy(pack.filename, filename);
         
         pack.filename = malloc(strlen(filename) + 1);  // Allocate memory (+1 for '\0')
@@ -196,9 +201,9 @@ int main(int argc, char* argv[]) {
             exit(1);
         }
 
-        printf("here2.5\n");
+        // printf("here2.5\n");
         memcpy(pack.filename, filename, strlen(filename) + 1);  // copy filename into the packet
-        printf("here2.6\n");
+        // printf("here2.6\n");
         memcpy(pack.filedata, buffer, size); // copy the file data to pack.filedata
 
         printf("File data: \n");
@@ -211,28 +216,40 @@ int main(int argc, char* argv[]) {
     
         memcpy(send_buffer + header, pack.filedata, pack.size); // copying the file data into memory after the header
 
-        printf("here3\n");
-        fflush(stdout);
+        // printf("here3\n");
+        // fflush(stdout);
+        /*
+        time_t ltime;
+        if(time(&ltime) == -1)
+        {
+            printf("Calendar time not available.\n");
+            exit(1);
+        }
+        printf("The time is %s\n", ctime(&ltime));
+        */
 
         // printf("Sending message to server.\n");  // send the packet to server
-        
         printf("Sending packet %d to server\n", num_packets);
         ssize_t bytes_sent = sendto(sockfd, send_buffer, sizeof(send_buffer), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
         if (bytes_sent < 0) {
             printf("Error sending message to server.\n");
             exit(1);
         }
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
 
         bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len); // wait for acknowledgement
         if (bytes_recieved < 0) {
             printf("Error recieving message from server.\n");
             exit(1);
         }
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+        RTT = fmax(RTT, (end_time.tv_sec - start_time.tv_sec) * 1000000000L + (end_time.tv_nsec - start_time.tv_nsec));    // calculating the round trip time by taking the difference
+
         message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
-
-
-        printf("here4\n");
-        fflush(stdout);
+        
+        // printf("here4\n");
+        // fflush(stdout);
         unsigned int ack_frag_no;
         printf("Message received: %s\n", message_recieved);
         if (sscanf(message_recieved, "ACK:%u", &ack_frag_no) == 1) {
@@ -252,6 +269,7 @@ int main(int argc, char* argv[]) {
         perror("Error reading file.\n");
     }
 
+    printf("The round trip time is %f us\n", (double) RTT/1000.0);
     fclose(file);   // Close the file
 
     close(sockfd);  // Close the socket

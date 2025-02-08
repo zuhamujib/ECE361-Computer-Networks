@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
             // the next frag we expect
         }
         
-        printf("Expected PACKET NO: %d", next_frag);
+        printf("Expected PACKET NO: %d\n", next_frag);
         // check if the next expected packet
         if (pkt.frag_no == next_frag) {
             fwrite(pkt.filedata, 1, pkt.size, file);
