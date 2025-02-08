@@ -170,8 +170,6 @@ int main(int argc, char *argv[]) {
         printf("FILENAME: %s\n", pkt.filename);
         fflush(stdout);
         
-
-
         parse = strtok(NULL, "\0");
         memcpy(pkt.filedata, parse, pkt.size);
 

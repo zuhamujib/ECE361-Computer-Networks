@@ -166,6 +166,14 @@ int main(int argc, char* argv[]) {
     int num_packets = 1;
     size_t size;
     int retry = 0;
+
+    fseek(file, 0 , SEEK_END);  // finding the file size in bytes
+    size_t total_bytes = ftell(file);
+    size_t total_frags = (total_bytes + NUM_FRAGMENTS - 1) / NUM_FRAGMENTS; // finding the total number of packets to be sent
+    rewind(file);  // Move file pointer back to the start
+
+    printf("Total number of fragments: %d\n", total_frags);
+
     while (!feof(file)) {
         if (!retry) {
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
@@ -174,7 +182,7 @@ int main(int argc, char* argv[]) {
         printf("here2\n");
         fflush(stdout);
         struct packet pack; // build a packet
-        pack.total_frag = 1;
+        pack.total_frag = total_frags;
         pack.frag_no = num_packets;
         pack.size = size;
 
