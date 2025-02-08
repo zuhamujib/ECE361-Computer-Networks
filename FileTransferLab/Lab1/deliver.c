@@ -189,9 +189,9 @@ int main(int argc, char* argv[]) {
         }
 
         printf("here2.5\n");
-        memcpy(pack.filename, filename, strlen(filename) + 1);  // Copy filename safely
+        memcpy(pack.filename, filename, strlen(filename) + 1);  // copy filename into the packet
         printf("here2.6\n");
-        memcpy(pack.filedata, buffer, size); // Copy the file data to packet.filedata
+        memcpy(pack.filedata, buffer, size); // copy the file data to pack.filedata
 
         printf("File data: \n");
         
@@ -209,7 +209,6 @@ int main(int argc, char* argv[]) {
         // printf("Sending message to server.\n");  // send the packet to server
         
         printf("Sending packet %d to server\n", num_packets);
-
         ssize_t bytes_sent = sendto(sockfd, send_buffer, sizeof(send_buffer), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
         if (bytes_sent < 0) {
             printf("Error sending message to server.\n");
@@ -226,10 +225,14 @@ int main(int argc, char* argv[]) {
 
         printf("here4\n");
         fflush(stdout);
-        if (strcmp(message_recieved, "ACK") == 0) {
-            printf("packet %d acknowledged\n", num_packets);
-            num_packets++;
-        } else if (strcmp(message_recieved, "NOT_ACK") == 0) {
+        uint16_t ack_frag_no;
+    
+        if (sscanf(message_recieved, "ACK:%u", &ack_frag_no) == 0) {
+            if (ack_frag_no == pack.frag_no) {
+                printf("packet %d acknowledged\n", num_packets);
+                num_packets++;
+            }
+        } else {
             printf("packet not acknowledged, sending again!\n");
             retry = 1;  // don't read the new packet fragments, try sending the same fragment again
         }
