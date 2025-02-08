@@ -233,9 +233,9 @@ int main(int argc, char* argv[]) {
 
         printf("here4\n");
         fflush(stdout);
-        uint16_t ack_frag_no;
-    
-        if (sscanf(message_recieved, "ACK:%u", &ack_frag_no) == 0) {
+        unsigned int ack_frag_no;
+        printf("Message received: %s\n", message_recieved);
+        if (sscanf(message_recieved, "ACK:%u", &ack_frag_no) == 1) {
             if (ack_frag_no == pack.frag_no) {
                 printf("packet %d acknowledged\n", num_packets);
                 num_packets++;
