@@ -115,7 +115,6 @@ int main(int argc, char *argv[]) {
         }
     
 
-        printf("READY TO RECIEVE PACKETS\n\n");
         fflush(stdout);
         // STEP 6: RETRIEVE OUR MSG FROM CLIENT
         for (int i = 0; i < 1024; i++) {
@@ -140,9 +139,9 @@ int main(int argc, char *argv[]) {
         // STEP 7: BEGIN PARSING OUR PACKET
         // dont forget to eventually error check this
         struct packet pkt;
-        printf("-------------------------------------------------------------------------");
-        printf("%s\n", buffer);
-        printf("-------------------------------------------------------------------------");
+        printf("---------------------------- PACKET INFO --------------------------------\n");
+        // printf("PACKET DATA: \n");
+        // printf("%s\n", buffer);
 
         char* parse;
         char* packet_info = buffer;
@@ -169,10 +168,11 @@ int main(int argc, char *argv[]) {
         memcpy(pkt.filename, parse, strlen(parse)+1);
         printf("FILENAME: %s\n", pkt.filename);
         fflush(stdout);
+
+        printf("-------------------------------------------------------------------------\n");
         
         parse = strtok(NULL, "\0");
         memcpy(pkt.filedata, parse, pkt.size);
-
         // STEP 8: FILE WRITING 
         // first we check if we have a new file, new file number or new filename
         if (pkt.frag_no == 1 || strcmp(current_filename, pkt.filename) != 0) {
@@ -184,11 +184,26 @@ int main(int argc, char *argv[]) {
 
             memcpy(current_filename, pkt.filename, strlen(pkt.filename)+1);
 
-            fflush(stdout);
-            // create the file and start writing
-
+            // IF FILE NAME ALREADY EXISTS WARN USER
             char filepath[100];
             sprintf(filepath, "temp/%s", current_filename);
+            if (access(filepath, F_OK) == 0) {
+                printf("! WARNING FILE ALREADY EXISTS !\n");
+                // printf("Would you like to replace the file (y/n): ");
+                // char *reply;
+                // scanf("%s", reply);
+                // if (strcmp(reply, "n") == 0) {
+                //     printf("Please enter your desired file name with extension:");
+                //     scanf("%s", current_filename);
+
+                // memcpy(pkt.filename, current_filename, strlen(pkt.filename)+1);
+                // }
+            }
+
+            // create the file and start writing
+
+            //char filepath[100];
+            //sprintf(filepath, "temp/%s", current_filename);
             file = fopen(filepath, "ab");
             if (!file) {
                 perror("ERROR CRETAING FILE");
@@ -200,7 +215,7 @@ int main(int argc, char *argv[]) {
             // the next frag we expect
         }
         
-        printf("Expected PACKET NO: %d\n", next_frag);
+        //printf("Expected PACKET NO: %d\n", next_frag);
         // check if the next expected packet
         if (pkt.frag_no == next_frag) {
             fwrite(pkt.filedata, 1, pkt.size, file);
@@ -226,7 +241,7 @@ int main(int argc, char *argv[]) {
             fwrite(pkt.filedata, 1, pkt.size, file);
             next_frag++;
             fclose(file);
-            printf("File completed transferring!\n\n");
+            printf("\nFile completed transferring!\n\n");
             connection = false;
             file = NULL;
             next_frag = 1;
