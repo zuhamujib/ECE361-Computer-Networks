@@ -206,12 +206,12 @@ int main(int argc, char* argv[]) {
         // printf("here2.6\n");
         memcpy(pack.filedata, buffer, size); // copy the file data to pack.filedata
 
-        printf("File data: \n");
-        
+        // printf("File data: \n");
+        /*
         for (int i = 0; i < size; i++) {
             printf("%c", pack.filedata[i]);
         }
-        
+        */
         int header = snprintf(send_buffer, sizeof(send_buffer), "%u:%u:%u:%s:", pack.total_frag, pack.frag_no, pack.size, pack.filename);   // putting together the buffer to send all thr packet data
     
         memcpy(send_buffer + header, pack.filedata, pack.size); // copying the file data into memory after the header
@@ -229,13 +229,13 @@ int main(int argc, char* argv[]) {
         */
 
         // printf("Sending message to server.\n");  // send the packet to server
-        printf("Sending packet %d to server\n", num_packets);
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+        printf("-------------------------------------------Sending packet %d to server---------------------------------\n", num_packets);
         ssize_t bytes_sent = sendto(sockfd, send_buffer, sizeof(send_buffer), 0, (struct sockaddr*)&socket_addr, sizeof(socket_addr));
         if (bytes_sent < 0) {
             printf("Error sending message to server.\n");
             exit(1);
         }
-        clock_gettime(CLOCK_MONOTONIC, &start_time);
 
         bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len); // wait for acknowledgement
         if (bytes_recieved < 0) {
@@ -244,7 +244,7 @@ int main(int argc, char* argv[]) {
         }
         clock_gettime(CLOCK_MONOTONIC, &end_time);
 
-        RTT = fmax(RTT, (end_time.tv_sec - start_time.tv_sec) * 1000000000L + (end_time.tv_nsec - start_time.tv_nsec));    // calculating the round trip time by taking the difference
+        RTT = fmax(RTT, (end_time.tv_sec - start_time.tv_sec) * 1000000000 + (end_time.tv_nsec - start_time.tv_nsec));    // calculating the round trip time by taking the difference
 
         message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
         
