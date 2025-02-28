@@ -13,6 +13,68 @@
 #include <stdbool.h>
 #include "packet.h"
 
+void parse_packet(const char *buffer, struct packet *pkt) {
+    int i = 0, start = 0, field = 0;
+
+    int buffer_len = 1050;
+
+    while (i < buffer_len && field < 4) {
+        if (buffer[i] == ':') {  // Found delimiter
+            int len = i - start;  // Length of the current field
+
+            switch (field) {
+                case 0: {  // total_frag
+                    char temp[20];  // Holds number as a string
+                    memcpy(temp, &buffer[start], len);
+                    temp[len] = '\0';  // Null-terminate for `atoi()`
+                    pkt->total_frag = atoi(temp);
+                    break;
+                }
+                case 1: {  // frag_no
+                    char temp[20];
+                    memcpy(temp, &buffer[start], len);
+                    temp[len] = '\0';
+                    pkt->frag_no = atoi(temp);
+                    break;
+                }
+                case 2: {  // size
+                    char temp[20];
+                    memcpy(temp, &buffer[start], len);
+                    temp[len] = '\0';
+                    pkt->size = atoi(temp);
+                    break;
+                }
+                case 3: {  // filename
+                    pkt->filename = (char*)malloc(len + 1);
+                    if (!pkt->filename) { perror("Malloc failed"); exit(1); }
+                    memcpy(pkt->filename, &buffer[start], len);
+                    pkt->filename[len] = '\0';  // Null-terminate
+                    break;
+                }
+            }
+
+            field++;  // Move to the next field
+            start = i + 1;  // Move start past delimiter
+        }
+        i++;
+    }
+
+    // **Ensure we successfully parsed all fields before copying filedata**
+    if (field != 4) {
+        perror("Parsing error: Incomplete packet");
+        exit(1);
+    }
+
+    // **Copy filedata (may contain binary data)**
+    int data_start = start;
+    if (pkt->size > 1000) {
+        perror("Error: Filedata size exceeds limit");
+        exit(1);
+    }
+
+    memcpy(pkt->filedata, &buffer[data_start], pkt->size);
+}
+
 int main(int argc, char *argv[]) {
 
     // STEP 1: TAKE IN THE LISTEN PORT
@@ -138,11 +200,11 @@ int main(int argc, char *argv[]) {
 
         // STEP 7: BEGIN PARSING OUR PACKET
         // dont forget to eventually error check this
-        struct packet pkt;
+        //struct packet pkt;
         printf("---------------------------- PACKET INFO --------------------------------\n");
         // printf("PACKET DATA: \n");
         // printf("%s\n", buffer);
-
+/*
         char* parse;
         char* packet_info = buffer;
 
@@ -173,6 +235,19 @@ int main(int argc, char *argv[]) {
         
         parse = strtok(NULL, "\0");
         memcpy(pkt.filedata, parse, pkt.size);
+
+        */
+
+        struct packet pkt; 
+
+        parse_packet(buffer, &pkt);
+
+        printf("Total Frags: %d\n", pkt.total_frag);
+        printf("Fragment No: %d\n", pkt.frag_no);
+        printf("Size: %d\n", pkt.size);
+        printf("Filename: %s\n", pkt.filename);
+        //printf("Filedata: %.*s\n", pkt.size, pkt.filedata);
+
         // STEP 8: FILE WRITING 
         // first we check if we have a new file, new file number or new filename
         if (pkt.frag_no == 1 || strcmp(current_filename, pkt.filename) != 0) {
@@ -209,7 +284,6 @@ int main(int argc, char *argv[]) {
                 perror("ERROR CRETAING FILE");
                 exit(1);
             }
-
             // update remaining important info
             total_frags = pkt.total_frag;
             // the next frag we expect
@@ -236,12 +310,19 @@ int main(int argc, char *argv[]) {
             exit(1);
         } 
 
+        //printf("here");
+        //fflush(stdout);
+
         // checking if file need to be closed, and resseting all info
         if (pkt.frag_no == total_frags) {
-            fwrite(pkt.filedata, 1, pkt.size, file);
+            if (pkt.frag_no == 1 && total_frags==0) {
+                fwrite(pkt.filedata, 1, pkt.size, file);
+
+            }
+            
             next_frag++;
             fclose(file);
-            printf("\nFile completed transferring!\n\n");
+            //printf("\nFile completed transferring!\n\n");
             connection = false;
             file = NULL;
             next_frag = 1;

@@ -181,9 +181,10 @@ int main(int argc, char* argv[]) {
 
     while (!feof(file)) {
         if (!retry) {
+            memset(buffer, 0, sizeof(buffer)); // **Clear buffer before reading next fragment**
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
-
+        memset(send_buffer, 0, sizeof(send_buffer));
         // printf("here2\n");
         // fflush(stdout);
         struct packet pack; // build a packet
@@ -191,8 +192,8 @@ int main(int argc, char* argv[]) {
         pack.frag_no = num_packets;
         pack.size = size;
 
-        // printf("here2.5\n");
-        // fflush(stdout);
+        printf(" PCKT SIZE FOR %d: %d\n", pack.frag_no, pack.size);
+        fflush(stdout);
         // strcpy(pack.filename, filename);
         
         pack.filename = malloc(strlen(filename) + 1);  // Allocate memory (+1 for '\0')
@@ -216,8 +217,8 @@ int main(int argc, char* argv[]) {
     
         memcpy(send_buffer + header, pack.filedata, pack.size); // copying the file data into memory after the header
 
-        // printf("here3\n");
-        // fflush(stdout);
+        printf("BUFFER: %s\n", send_buffer);
+        fflush(stdout);
         /*
         time_t ltime;
         if(time(&ltime) == -1)
