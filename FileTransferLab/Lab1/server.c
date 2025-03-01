@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include "packet.h"
+#include <time.h>
 
 void parse_packet(const char *buffer, struct packet *pkt) {
     int i = 0, start = 0, field = 0;
@@ -130,6 +131,9 @@ int main(int argc, char *argv[]) {
     bool connection = false;
 
     char initial[1024]; 
+
+    // starting randomized speed for later packet drop
+    srand(time(NULL));
 
 
     while (1) {
@@ -264,21 +268,10 @@ int main(int argc, char *argv[]) {
             sprintf(filepath, "temp/%s", current_filename);
             if (access(filepath, F_OK) == 0) {
                 printf("! WARNING FILE ALREADY EXISTS !\n");
-                // printf("Would you like to replace the file (y/n): ");
-                // char *reply;
-                // scanf("%s", reply);
-                // if (strcmp(reply, "n") == 0) {
-                //     printf("Please enter your desired file name with extension:");
-                //     scanf("%s", current_filename);
-
-                // memcpy(pkt.filename, current_filename, strlen(pkt.filename)+1);
-                // }
             }
 
             // create the file and start writing
 
-            //char filepath[100];
-            //sprintf(filepath, "temp/%s", current_filename);
             file = fopen(filepath, "ab");
             if (!file) {
                 perror("ERROR CRETAING FILE");
@@ -301,14 +294,35 @@ int main(int argc, char *argv[]) {
             exit(1);
          }
 
-         // STEP 9: SEND ACK
-        char send_message[20];
-        snprintf(send_message, sizeof(send_message), "ACK:%u", pkt.frag_no);
-        if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
-            perror("SENDTO FAIL\n");
-            close(sockfd);
-            exit(1);
-        } 
+         // STEP 9: SEND ACK CREATE FAKE FILE DROP
+
+        // Begin by finding random number between 1-75 (dropping every 75)
+        int packet_count = 0;
+        int packet_drop = 1 + (rand() % 75);
+
+        packet_count++;
+
+        if (packet_count == packet_drop) {
+            // drop the packet
+            printf("SIMULATING PACKET DROP FOR: %d\n", pkt.frag_no);
+
+            // reseting for the next packetdrop
+            packet_count = 0;
+            packet_drop = 1 + (rand() % 75);
+        }
+        else{
+            // send as normal
+            char send_message[20];
+            snprintf(send_message, sizeof(send_message), "ACK:%u", pkt.frag_no);
+            if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
+                perror("SENDTO FAIL\n");
+                close(sockfd);
+                exit(1);
+            } 
+        }
+
+
+        
 
         //printf("here");
         //fflush(stdout);
@@ -335,23 +349,3 @@ int main(int argc, char *argv[]) {
 }
 
 
-// Essentially 3 Steps:
-// 1. Retrieve the message; retrieve and parse the incoming packets
-// 2. determine if its a new packet using fragment number
-    // if one is the packet number, create a new file for this 
-    // if non one packet number, check if file exists
-        // if files already exists append the packet to the new file
-        // if file doesnt exist error 
-// 3. If the message was sent send back an ACK
-
-
-// Many possible errors and areas of concern:
-//      parsing through to recieve file data correct?
-//      sending ack as packet or is msg just fine
-//      dont know if next packet number thing is correctly implemented
-//      check all data setting
-//      add in error checking
-//      memcpy used correct?
-//      MAJOR CONCERN: IF WE SEND A FILE THRU DELIVER AND WE OPNE IT IN SERVER ASSUMING 
-//      IT DOESNT EXIST EVEN THO THE FILES ARE IN THE SAME FOLDER THIS WILL CAUSE SOME PROBLES FOR US
-//      POSSIBLY NEED TO SEND IN FILE FORM DIFFERENT FOLDER WHEN TESTING

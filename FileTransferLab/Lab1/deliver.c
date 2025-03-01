@@ -192,8 +192,8 @@ int main(int argc, char* argv[]) {
         pack.frag_no = num_packets;
         pack.size = size;
 
-        printf(" PCKT SIZE FOR %d: %d\n", pack.frag_no, pack.size);
-        fflush(stdout);
+        //printf(" PCKT SIZE FOR %d: %d\n", pack.frag_no, pack.size);
+        //fflush(stdout);
         // strcpy(pack.filename, filename);
         
         pack.filename = malloc(strlen(filename) + 1);  // Allocate memory (+1 for '\0')
