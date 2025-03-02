@@ -111,10 +111,11 @@ int main(int argc, char* argv[]) {
     char input[FILE_LEN];   // reading the full user input
 
     long RTT = 0.0;
-    long EstimatedRTT[NUM_FRAGMENTS] = 0.0;
+    long EstimatedRTT = 0.0;
     long DevRTT = 0.0;
     double alpha = 0.125;
     double beta = 0.25;
+    double TimeoutInterval = 1.0;
     struct timespec start_time , end_time;
 
     while (1) {     // Read user input constantly until a correct input is input format is given
@@ -195,6 +196,12 @@ int main(int argc, char* argv[]) {
 
     printf("Total number of fragments: %d\n", total_frags);
 
+    // setting initial timeout:
+    struct timeval timeout;
+    timeout.tv_sec = (int)TimeoutInterval;  // Convert to seconds
+    timeout.tv_usec = (TimeoutInterval - timeout.tv_sec) * 1000000;  // Convert remainder to microseconds
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     while (!feof(file)) {
         if (!retry) {
             memset(buffer, 0, sizeof(buffer)); // **Clear buffer before reading next fragment**
@@ -256,18 +263,32 @@ int main(int argc, char* argv[]) {
 
         bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len); // wait for acknowledgement
         if (bytes_recieved < 0) {
-            printf("Error recieving message from server.\n");
-            exit(1);
+            if (errno == EWOULDBLOCK || errno == EAGAIN) {
+                printf("Timeout occurred! Retransmitting...\n");
+                retry = 1;
+                continue;  // Retry sending the packet
+            } else {
+                printf("Error recieving message from server.\n");
+                exit(1);
+            }
         }
         clock_gettime(CLOCK_MONOTONIC, &end_time);
 
         RTT = fmax(RTT, (end_time.tv_sec - start_time.tv_sec) * 1000000000 + (end_time.tv_nsec - start_time.tv_nsec));    // calculating the round trip time by taking the difference
-        EstimatedRTT[num_packets] = (1 - alpha) * EstimatedRTT[num_packets - 1] + alpha * RTT;
-        DevRTT = (1 - beta) * DevRTT + beta * abs(RTT - EstimatedRTT[num_packets]);
-        long timeout = EstimatedRTT[num_packets] + 4 * DevRTT;
-        printf("EstimatedRTT: %ld\n", EstimatedRTT[pack.frag_no]);
+        
+        EstimatedRTT = (1 - alpha) * EstimatedRTT + alpha * RTT;
+        DevRTT = (1 - beta) * DevRTT + beta * abs(RTT - EstimatedRTT);
+        TimeoutInterval = EstimatedRTT + 4 * DevRTT;
+
+        // Update socket timeout
+        timeout.tv_sec = (int)TimeoutInterval;
+        timeout.tv_usec = (TimeoutInterval - timeout.tv_sec) * 1000000;
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+        // long timeout = EstimatedRTT[num_p + 4 * DevRTT;
+        printf("EstimatedRTT: %ld\n", EstimatedRTT);
         printf("DevRTT: %ld\n", DevRTT);
-        printf("Timeout: %ld\n", timeout);
+        // printf("Timeout: %ld\n", timeout);
 
         message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
         
