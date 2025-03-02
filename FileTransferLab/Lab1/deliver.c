@@ -49,6 +49,18 @@ string manipulation functions available in C for the data field or for the whole
 the first part of the packet before data is really a string.
 */
 
+
+// Lab 3
+/*
+Need to add timeout and retransmission
+timeout found using formula: RTT = max(RTT, end_time - start_time)
+Timeout = EstimatedRTT + 4*DevRTT 
+where
+EstimatedRTT = (1-α)*EstimatedRTT + α*SampleRTT
+DevRTT = (1-β)*DevRTT + β*|SampleRTT - EstimatedRTT|
+with α = 0.125 and β = 0.25
+*/
+
 // JUST SOME ADDITIONAL NOTES
 // remember: argv[0] contains the name of the current program (exe)
 
@@ -99,6 +111,10 @@ int main(int argc, char* argv[]) {
     char input[FILE_LEN];   // reading the full user input
 
     long RTT = 0.0;
+    long EstimatedRTT[NUM_FRAGMENTS] = 0.0;
+    long DevRTT = 0.0;
+    double alpha = 0.125;
+    double beta = 0.25;
     struct timespec start_time , end_time;
 
     while (1) {     // Read user input constantly until a correct input is input format is given
@@ -246,6 +262,12 @@ int main(int argc, char* argv[]) {
         clock_gettime(CLOCK_MONOTONIC, &end_time);
 
         RTT = fmax(RTT, (end_time.tv_sec - start_time.tv_sec) * 1000000000 + (end_time.tv_nsec - start_time.tv_nsec));    // calculating the round trip time by taking the difference
+        EstimatedRTT[num_packets] = (1 - alpha) * EstimatedRTT[num_packets - 1] + alpha * RTT;
+        DevRTT = (1 - beta) * DevRTT + beta * abs(RTT - EstimatedRTT[num_packets]);
+        long timeout = EstimatedRTT[num_packets] + 4 * DevRTT;
+        printf("EstimatedRTT: %ld\n", EstimatedRTT[pack.frag_no]);
+        printf("DevRTT: %ld\n", DevRTT);
+        printf("Timeout: %ld\n", timeout);
 
         message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
         
@@ -272,7 +294,8 @@ int main(int argc, char* argv[]) {
 
     printf("The round trip time is %f us\n", (double) RTT/1000.0);
     fclose(file);   // Close the file
-
+    
+    // STEP 10 **********************************************************************
     close(sockfd);  // Close the socket
 
     return 0;
