@@ -252,51 +252,9 @@ int main(int argc, char *argv[]) {
         printf("Filename: %s\n", pkt.filename);
         //printf("Filedata: %.*s\n", pkt.size, pkt.filedata);
 
-        // STEP 8: FILE WRITING 
+        // STEP 8: FILE WRITING AND SIMULAING PAKET DROP
         // first we check if we have a new file, new file number or new filename
-        if (pkt.frag_no == 1 || strcmp(current_filename, pkt.filename) != 0) {
-            // if previous file exists or is open we close it 
-            if (file) {
-                fclose(file);
-                printf("File %s closed. \n", current_filename);
-            }
 
-            memcpy(current_filename, pkt.filename, strlen(pkt.filename)+1);
-
-            // IF FILE NAME ALREADY EXISTS WARN USER
-            char filepath[100];
-            sprintf(filepath, "temp/%s", current_filename);
-            if (access(filepath, F_OK) == 0) {
-                printf("! WARNING FILE ALREADY EXISTS !\n");
-            }
-
-            // create the file and start writing
-
-            file = fopen(filepath, "ab");
-            if (!file) {
-                perror("ERROR CRETAING FILE");
-                exit(1);
-            }
-            // update remaining important info
-            total_frags = pkt.total_frag;
-            // the next frag we expect
-        }
-        
-        //printf("Expected PACKET NO: %d\n", next_frag);
-        // check if the next expected packet
-        if (pkt.frag_no == next_frag) {
-            fwrite(pkt.filedata, 1, pkt.size, file);
-            next_frag++;
-        }
-        else
-         {
-            printf("ORDER PROBLEM");
-            exit(1);
-         }
-
-         // STEP 9: SEND ACK CREATE FAKE FILE DROP
-
-        // Begin by finding random number between 1-75 (dropping every 75)
         int packet_count = 0;
         int packet_drop = 1 + (rand() % 75);
 
@@ -304,14 +262,59 @@ int main(int argc, char *argv[]) {
 
         if (packet_count == packet_drop) {
             // drop the packet
+            printf("-------------------------------------------------------------------------\n");
             printf("SIMULATING PACKET DROP FOR: %d\n", pkt.frag_no);
-
+            printf("-------------------------------------------------------------------------\n");
             // reseting for the next packetdrop
             packet_count = 0;
             packet_drop = 1 + (rand() % 75);
         }
         else{
-            // send as normal
+
+            if (pkt.frag_no == 1 || strcmp(current_filename, pkt.filename) != 0) {
+                // if previous file exists or is open we close it 
+                if (file) {
+                    fclose(file);
+                    printf("File %s closed. \n", current_filename);
+                }
+
+                memcpy(current_filename, pkt.filename, strlen(pkt.filename)+1);
+
+                // IF FILE NAME ALREADY EXISTS WARN USER
+                char filepath[100];
+                sprintf(filepath, "temp/%s", current_filename);
+                if (access(filepath, F_OK) == 0) {
+                    printf("! WARNING FILE ALREADY EXISTS !\n");
+                }
+
+                // create the file and start writing
+
+                file = fopen(filepath, "ab");
+                if (!file) {
+                    perror("ERROR CRETAING FILE");
+                    exit(1);
+                }
+                // update remaining important info
+                total_frags = pkt.total_frag;
+                // the next frag we expect
+            }
+            
+            //printf("Expected PACKET NO: %d\n", next_frag);
+            // check if the next expected packet
+            if (pkt.frag_no == next_frag) {
+                fwrite(pkt.filedata, 1, pkt.size, file);
+                next_frag++;
+            }
+            else
+            {
+                printf("ORDER PROBLEM");
+                exit(1);
+            }
+
+            // STEP 9: SEND ACK 
+
+            
+                // send as normal
             char send_message[20];
             snprintf(send_message, sizeof(send_message), "ACK:%u", pkt.frag_no);
             if (sendto(sockfd, send_message, strlen(send_message), 0, (struct sockaddr *)&c_address, addr_len) == -1) {
@@ -319,27 +322,28 @@ int main(int argc, char *argv[]) {
                 close(sockfd);
                 exit(1);
             } 
-        }
-
-
         
 
-        //printf("here");
-        //fflush(stdout);
 
-        // checking if file need to be closed, and resseting all info
-        if (pkt.frag_no == total_frags) {
-            if (pkt.frag_no == 1 && total_frags==0) {
-                fwrite(pkt.filedata, 1, pkt.size, file);
-
-            }
             
-            next_frag++;
-            fclose(file);
-            //printf("\nFile completed transferring!\n\n");
-            connection = false;
-            file = NULL;
-            next_frag = 1;
+
+            //printf("here");
+            //fflush(stdout);
+
+            // checking if file need to be closed, and resseting all info
+            if (pkt.frag_no == total_frags) {
+                if (pkt.frag_no == 1 && total_frags==0) {
+                    fwrite(pkt.filedata, 1, pkt.size, file);
+
+                }
+                
+                next_frag++;
+                fclose(file);
+                //printf("\nFile completed transferring!\n\n");
+                connection = false;
+                file = NULL;
+                next_frag = 1;
+            }
         }
 
     }
