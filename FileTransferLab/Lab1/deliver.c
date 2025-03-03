@@ -70,7 +70,7 @@ with α = 0.125 and β = 0.25
 int main(int argc, char* argv[]) {
     // STEP 1 **********************************************************************
 
-    if (argc < 2) {
+    if (argc < 3) {
         perror("INVALID EXECUTION COMMAND\n");
         exit(1);
     }
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
     inet_pton(AF_INET, argv[1], &server_address);
     int server_port = atoi(argv[2]);
 
-    if (server_port < 0) {
+    if (server_port <= 0 || server_port > 65535) {
         perror("Invalid port number\n");
         exit(EXIT_FAILURE);
     }
@@ -110,13 +110,13 @@ int main(int argc, char* argv[]) {
     char ftp[INPUT_LEN];
     char input[FILE_LEN];   // reading the full user input
 
-    long RTT = 0.0;
-    long EstimatedRTT = 0.0;
-    long DevRTT = 0.0;
+    double RTT = 0.0;
+    double EstimatedRTT = 0.0;
+    double DevRTT = 0.0;
     double alpha = 0.125;
     double beta = 0.25;
-    double TimeoutInterval = 1.0;
-    struct timespec start_time , end_time;
+    double TimeoutInterval = 1.0;   // in msec
+    struct timespec start_time , end_time;  // timespec: sec and nsec
 
     while (1) {     // Read user input constantly until a correct input is input format is given
         printf("Enter the message to be sent in the format: ftp <filename>\n");
@@ -196,10 +196,10 @@ int main(int argc, char* argv[]) {
 
     printf("Total number of fragments: %d\n", total_frags);
 
-    // setting initial timeout:
-    struct timeval timeout;
-    timeout.tv_sec = (int)TimeoutInterval;  // Convert to seconds
-    timeout.tv_usec = (TimeoutInterval - timeout.tv_sec) * 1000000;  // Convert remainder to microseconds
+    struct timeval timeout; // setting initial timeout: timeval is in sec and usec
+    timeout.tv_sec = (int)(TimeoutInterval / 1000.0);  // Convert ms to sec
+    timeout.tv_usec = (int)((TimeoutInterval - (timeout.tv_sec * 1000)) * 1000);  // Convert remainder to usec
+
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     while (!feof(file)) {
@@ -207,6 +207,7 @@ int main(int argc, char* argv[]) {
             memset(buffer, 0, sizeof(buffer)); // **Clear buffer before reading next fragment**
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
+        retry = 0;
         memset(send_buffer, 0, sizeof(send_buffer));
         // printf("here2\n");
         // fflush(stdout);
@@ -260,6 +261,11 @@ int main(int argc, char* argv[]) {
             printf("Error sending message to server.\n");
             exit(1);
         }
+        
+        if (pack.filename) {
+            free(pack.filename);
+            pack.filename = NULL; // Avoid double free
+        }
 
         bytes_recieved = recvfrom(sockfd, &message_recieved, sizeof(message_recieved), 0, (struct sockaddr*)&from_addr, &from_len); // wait for acknowledgement
         if (bytes_recieved < 0) {
@@ -274,21 +280,20 @@ int main(int argc, char* argv[]) {
         }
         clock_gettime(CLOCK_MONOTONIC, &end_time);
 
-        RTT = fmax(RTT, (end_time.tv_sec - start_time.tv_sec) * 1000000000 + (end_time.tv_nsec - start_time.tv_nsec));    // calculating the round trip time by taking the difference
-        
+        RTT = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_nsec - start_time.tv_nsec)/1000000.0;    // calculating the round trip time by taking the difference
+        // in first part: converting sec to msec and nsec to msec
         EstimatedRTT = (1 - alpha) * EstimatedRTT + alpha * RTT;
-        DevRTT = (1 - beta) * DevRTT + beta * abs(RTT - EstimatedRTT);
-        TimeoutInterval = EstimatedRTT + 4 * DevRTT;
+        DevRTT = (1 - beta) * DevRTT + beta * fabs(RTT - EstimatedRTT);
+        TimeoutInterval = EstimatedRTT + 4 * DevRTT; 
+        
+        timeout.tv_sec = (int)(TimeoutInterval / 1000.0);  // Convert ms to sec
+        timeout.tv_usec = (int)((TimeoutInterval - (timeout.tv_sec * 1000)) * 1000);  // Decimal points convert to usec
+        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)); // Set socket timeout using the updated TimeoutInterval
 
-        // Update socket timeout
-        timeout.tv_sec = (int)TimeoutInterval;
-        timeout.tv_usec = (TimeoutInterval - timeout.tv_sec) * 1000000;
-        setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
-        // long timeout = EstimatedRTT[num_p + 4 * DevRTT;
-        printf("EstimatedRTT: %ld\n", EstimatedRTT);
-        printf("DevRTT: %ld\n", DevRTT);
-        // printf("Timeout: %ld\n", timeout);
+        printf("The round trip time is %.3f ms\n", RTT); // Print updated RTT values
+        printf("EstimatedRTT: %.3f ms\n", EstimatedRTT);
+        printf("DevRTT: %.3f ms\n", DevRTT);
+        printf("Timeout: %.3f ms\n", TimeoutInterval);
 
         message_recieved[bytes_recieved] = '\0';  // adding a null character at the end to represent a string
         
@@ -300,6 +305,7 @@ int main(int argc, char* argv[]) {
             if (ack_frag_no == pack.frag_no) {
                 printf("packet %d acknowledged\n", num_packets);
                 num_packets++;
+                retry = 0;
             }
         } else {
             printf("packet not acknowledged, sending again!\n");
@@ -313,7 +319,6 @@ int main(int argc, char* argv[]) {
         perror("Error reading file.\n");
     }
 
-    printf("The round trip time is %f us\n", (double) RTT/1000.0);
     fclose(file);   // Close the file
     
     // STEP 10 **********************************************************************
