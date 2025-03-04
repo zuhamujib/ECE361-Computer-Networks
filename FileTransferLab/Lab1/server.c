@@ -250,7 +250,7 @@ int main(int argc, char *argv[]) {
         printf("Fragment No: %d\n", pkt.frag_no);
         printf("Size: %d\n", pkt.size);
         printf("Filename: %s\n", pkt.filename);
-        //printf("Filedata: %.*s\n", pkt.size, pkt.filedata);
+        printf("Filedata: %.*s\n", pkt.size, pkt.filedata);
 
         // STEP 8: FILE WRITING AND SIMULAING PAKET DROP
         // first we check if we have a new file, new file number or new filename
@@ -260,6 +260,7 @@ int main(int argc, char *argv[]) {
 
         packet_count++;
 
+        //sleep(1);
         if (packet_count == packet_drop) {
             // drop the packet
             printf("-------------------------------------------------------------------------\n");
