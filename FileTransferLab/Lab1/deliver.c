@@ -202,11 +202,16 @@ int main(int argc, char* argv[]) {
 
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-    while (!feof(file)) {
+    while (1) {
+        if (feof(file) && !retry) {
+            break;
+        }
+
         if (!retry) {
             memset(buffer, 0, sizeof(buffer)); // **Clear buffer before reading next fragment**
             size = fread(buffer, 1, NUM_FRAGMENTS, file); // reading the next 1000 bytes considering the last one sent was a pass
         }
+
         retry = 0;
         memset(send_buffer, 0, sizeof(send_buffer));
         // printf("here2\n");
@@ -241,7 +246,7 @@ int main(int argc, char* argv[]) {
     
         memcpy(send_buffer + header, pack.filedata, pack.size); // copying the file data into memory after the header
 
-        printf("BUFFER: %s\n", send_buffer);
+        // printf("BUFFER: %s\n", send_buffer);
         fflush(stdout);
         /*
         time_t ltime;
@@ -271,6 +276,12 @@ int main(int argc, char* argv[]) {
         if (bytes_recieved < 0) {
             if (errno == EWOULDBLOCK || errno == EAGAIN) {
                 printf("Timeout occurred! Retransmitting...\n");
+                printf("The values at timeout: \n");
+                printf("The round trip time is %.3f ms\n", RTT); // Print updated RTT values
+                printf("EstimatedRTT: %.3f ms\n", EstimatedRTT);
+                printf("DevRTT: %.3f ms\n", DevRTT);
+                printf("Timeout: %.3f ms\n", TimeoutInterval);
+                printf("that's all!\n");
                 retry = 1;
                 continue;  // Retry sending the packet
             } else {
