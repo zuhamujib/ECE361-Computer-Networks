@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
     
         memcpy(send_buffer + header, pack.filedata, pack.size); // copying the file data into memory after the header
 
-        printf("BUFFER: %s\n", send_buffer);
+        // printf("BUFFER: %s\n", send_buffer);
         fflush(stdout);
         /*
         time_t ltime;
