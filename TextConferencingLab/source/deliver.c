@@ -28,6 +28,10 @@ int main() {
 
     /************************************************** STEP 1: CREATE SOCKET ***************************************************/
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);                                                           // SOCK_STREAM for TCP
+    if (sockfd < 0) {
+        perror("Socket failed");
+        return -1;
+    }
 
     /************************************************** STEP 2: TERMINAL STDIN **************************************************/
     char input[INPUT_LEN];
