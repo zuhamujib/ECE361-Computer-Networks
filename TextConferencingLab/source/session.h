@@ -38,19 +38,20 @@ typedef struct {
     int socket; // for comm between server and user possibly
     char session[MAX_NAME];
     int active;
-} clients;
+} client_t;
 
 typedef struct {
     char session_id[MAX_NAME];
-    client_t *clients[MAX_CLIENTS];
+    client_t *clients[MAX_CLIENTS_PER_SESSION];
     int client_count;
-} sessions;
+} session_t;
 
 // Global array to store active sessions
-Session sessions[MAX_SESSIONS];
-int num_sessions = 0;  // Track the number of active sessions
+extern session_t sessions[MAX_SESSIONS];
+extern int num_sessions;  // Track the number of active sessions
 
-PacketType get_packet_type(const chartype_str);
+PacketType get_packet_type(const char *type_str);
 const char* get_packet_type_string(PacketType type);
 
 #endif  // SESSION_H
+

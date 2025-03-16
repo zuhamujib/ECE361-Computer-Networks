@@ -12,5 +12,3 @@ struct message {
 };
 
 #endif  // End of MESSAGE_H
-
-

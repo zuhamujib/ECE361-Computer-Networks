@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 
     // setting up initial socket connection stuff
     char* listen_port = argv[1];
-    int port_val = atoi(listen_port);
+    int port = atoi(listen_port);
 
     int client_fd;
     struct sockaddr_in client_addr;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     }
 
     // starting to listen and trying to see if we can listen on our TCP connection
-    if (listen(server_fd, MAX_CLIENTS) < 0) {
+    if (listen(server_fd, MAX_CLIENTS_PER_SESSION) < 0) {
         perror("LISTEN FAILUTRE");
         exit(1);
     }

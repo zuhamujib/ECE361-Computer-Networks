@@ -1,8 +1,12 @@
 #include "session.h"
 
 // Array mapping packet type names to their enum values
+// Define global variables here (so they exist only once)
+session_t sessions[MAX_SESSIONS];  // Now properly defined in one file
+int num_sessions = 0;
+
 static struct {
-    const char name;
+    const char *name;
     PacketType type;
 } packet_map[] = {
     {"LOGIN", LOGIN},
@@ -21,7 +25,7 @@ static struct {
 };
 
 // Convert string to PacketType enum
-PacketType get_packet_type(const chartype_str) {
+PacketType get_packet_type(const char *type_str) {
     for (size_t i = 0; i < sizeof(packet_map) / sizeof(packet_map[0]); i++) {
         if (strcmp(packet_map[i].name, type_str) == 0) {
             return packet_map[i].type;
