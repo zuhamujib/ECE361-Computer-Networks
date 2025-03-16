@@ -5,8 +5,8 @@ STEPS TO FOLLOW:
 2. Create a constant stdin while loop to take user input
 3. Handle the commands on the stdin file stream
     - LOGIN: go to 4.
-4. Connect the socket to the server
-5.
+4. Establish connection to the server
+5. 
 
 */
 
@@ -154,7 +154,8 @@ int main() {
                 exit(1);
             }
 
-            deserialize_msg(recieve_buffer, &msg);   
+            deserialize_msg(recieve_buffer, &msg);  
+            handle_Acks(&msg); 
 
         } else if (strcmp(input, "/list") == 0) {
             msg.type = QUERY;
@@ -171,6 +172,7 @@ int main() {
             }
 
             deserialize_msg(recieve_buffer, &msg);   
+            handle_Acks(&msg);
 
         } else if (strcmp(input, "/quit") == 0) {
             msg.type = EXIT;
@@ -188,6 +190,9 @@ int main() {
             send(sockfd, &msg, sizeof(msg), 0);
         }
     }
+
+    close(sockfd);
+
     return 0;
 }
 
