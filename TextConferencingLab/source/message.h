@@ -3,6 +3,7 @@
 
 #define MAX_NAME 50  // Define appropriate limits
 #define MAX_DATA 1024  // Define max data size
+#define BUFFER_SIZE 500
 
 #include <stdio.h>
 #include <stdlib.h>
