@@ -52,6 +52,7 @@ int main() {
 
     struct message msg;
     memset(&msg, 0, sizeof(msg));                                                                   // initialize memory to 0
+
     char send_buffer[BUFFER_SIZE]; 
     memset(send_buffer, 0, sizeof(send_buffer));
 
@@ -59,6 +60,8 @@ int main() {
     memset(send_buffer, 0, sizeof(send_buffer));
 
     while (1) {
+        memset(&msg, 0, sizeof(msg));                                                              // refresh msg every iteration
+        
         fgets(input, sizeof(input), stdin);                                                                 // reading the stdin
 
         /********************************************** STEP 3: COMMAND HANDLING **************************************************/
@@ -95,7 +98,7 @@ int main() {
                 exit(1);
             }
 
-            deserialize_msg(recieve_buffer, &msg);                                // deseriallize the msg
+            deserialize_msg(recieve_buffer, &msg);                                                       // deseriallize the msg
             handle_Acks(&msg);
             
         } else if (strcmp(input, "/logout") == 0) {
@@ -115,6 +118,16 @@ int main() {
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &msg, sizeof(msg), 0);
+
+            struct sockaddr_in from_addr;
+            socklen_t from_len = sizeof(from_addr);
+            ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
+            if (bytes_recieved < 0) {
+                printf("Error recieving message from server.\n");
+                exit(1);
+            }
+
+            deserialize_msg(recieve_buffer, &msg);                                                       // deseriallize the msg
             handle_Acks(&msg);
 
         } else if (strcmp(input, "/leavesession") == 0) {
@@ -129,16 +142,40 @@ int main() {
             msg.type = NEW_SESS;
             strcpy((char *)msg.data, session_id);
             msg.size = strlen((char *)msg.data);
+
+            serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &msg, sizeof(msg), 0);
-            printf("Created session: %s\n", session_id);
+
+            struct sockaddr_in from_addr;
+            socklen_t from_len = sizeof(from_addr);
+            ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
+            if (bytes_recieved < 0) {
+                printf("Error recieving message from server.\n");
+                exit(1);
+            }
+
+            deserialize_msg(recieve_buffer, &msg);   
 
         } else if (strcmp(input, "/list") == 0) {
             msg.type = QUERY;
+
+            serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &msg, sizeof(msg), 0);
-            printf("Requesting user/session list...\n");
+            
+            struct sockaddr_in from_addr;
+            socklen_t from_len = sizeof(from_addr);
+            ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
+            if (bytes_recieved < 0) {
+                printf("Error recieving message from server.\n");
+                exit(1);
+            }
+
+            deserialize_msg(recieve_buffer, &msg);   
 
         } else if (strcmp(input, "/quit") == 0) {
             msg.type = EXIT;
+
+            serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &msg, sizeof(msg), 0);
             printf("Exiting client.\n");
             break;
@@ -158,7 +195,7 @@ int main() {
 void handle_Acks(struct message *msg) {
     switch (msg->type) {
         case LO_ACK:
-            printf("Successfully logged in: %s\n", msg->source);
+            printf("Successfully logged in %s\n", msg->source);
             break;
         case LO_NAK:
             printf("Login failed: %s\n", msg->data);
