@@ -27,11 +27,24 @@ typedef enum {
 } PacketType;
 
 // Structure to represent a session
+// typedef struct {
+//     char session_id[MAX_NAME];                     // Unique session name
+//     char participants[MAX_CLIENTS_PER_SESSION][MAX_NAME]; // List of client IDs in session
+//     int num_clients;                               // Number of clients currently in the session
+// } Session;
+
 typedef struct {
-    char session_id[MAX_NAME];                     // Unique session name
-    char participants[MAX_CLIENTS_PER_SESSION][MAX_NAME]; // List of client IDs in session
-    int num_clients;                               // Number of clients currently in the session
-} Session;
+    char id[MAX_NAME];
+    int socket; // for comm between server and user possibly
+    char session[MAX_NAME];
+    int active;
+} clients;
+
+typedef struct {
+    char session_id[MAX_NAME];
+    client_t *clients[MAX_CLIENTS];
+    int client_count;
+} sessions;
 
 // Global array to store active sessions
 Session sessions[MAX_SESSIONS];
