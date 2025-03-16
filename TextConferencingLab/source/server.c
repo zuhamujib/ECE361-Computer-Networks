@@ -8,6 +8,17 @@
 #include "session.h"
 #include "message.h"
 
+// functions to help serialize and deserialize with the delimter ":"
+void serialize_msg(struct message *msg, char *buffer, size_t buffer_size) {
+    snprintf(buffer, buffer_size, "%u:%u:%s:%s", msg->type, msg->size, msg->source, msg->data);
+    // puts msh into proper format
+}
+
+void deserialize_msg(const char *buffer, struct message *msg) {
+     sscanf(buffer, "%d:%d:%49[^:]:%1023[^\n]", &(msg->type), &(msg->size), msg->source, msg->data);
+     // retrieves the value, the size, the name up to 49 bytes, and the data up to 1023 bytes
+}
+
 
 int main(int argc, char *argv[]) {
     // STEP 1: Retriving the port number from user and checking the port number
@@ -19,10 +30,6 @@ int main(int argc, char *argv[]) {
     // setting up initial socket connection stuff
     char* listen_port = argv[1];
     int port = atoi(listen_port);
-
-    int client_fd;
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
 
     // trying to create a socket
     int server_fd;
@@ -52,10 +59,22 @@ int main(int argc, char *argv[]) {
 
     printf("server on port %d...\n", port);
 
+    // STEP 2: BEGING MAIN LOOP TO RETIRVE INFO AND MAKE CONNECRIONS
     // the while loop will start here 
     // Will need to handle multiple threads and connections starting from this point and addressing teh user messages
 
+    // setting up client stuff to accept messages
+    int client_fd;
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+
     while (1) {
+
+        client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+        if (client_fd < 0) {
+            perror("ACCEPT FFAILED");
+            continue;
+        }
 
     }
 
