@@ -67,10 +67,15 @@ int main() {
         /********************************************** STEP 3: COMMAND HANDLING **************************************************/
         if (strncmp(input, "/login ", 7) == 0) {
             
-            sscanf(input, "/login %s %s %s %s", client_id, password, server_ip, server_port);                   // parse the input
+            sscanf(input, "/login %s %s %s %d", client_id, password, server_ip, &server_port);                   // parse the input
             msg.type = LOGIN;
 
-            socket_addr.sin_port = htons(server_port);                                                     // Store server address
+            socket_addr.sin_port = htons(server_port);   
+
+            printf("Parsed values:\nClient ID: %s\nPassword: %s\nServer IP: %s\nPort: %d\n", client_id, password, server_ip, server_port);
+            fflush(stdout); 
+            
+                                               // Store server address
             
             if (inet_pton(AF_INET, server_ip, &socket_addr.sin_addr) <= 0) {                        // convert ip address to binary
                 perror("Invalid IP address");
@@ -85,7 +90,11 @@ int main() {
             strcpy((char *)msg.source, client_id);                                                             // Store client_id
             strcpy((char *)msg.data, password);                                                                 // Store password
             msg.size = strlen((char *)msg.data);                                                                    // Store size
+            
 
+            printf("the buffer: %s:", send_buffer);
+            fflush(stdout);
+            
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
 
             send(sockfd, &msg, sizeof(msg), 0);                                                     // send the message to server
