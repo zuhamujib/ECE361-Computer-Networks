@@ -26,13 +26,6 @@ typedef enum {
     QU_ACK       // Server responds with a list of users and sessions
 } PacketType;
 
-// Structure to represent a session
-// typedef struct {
-//     char session_id[MAX_NAME];                     // Unique session name
-//     char participants[MAX_CLIENTS_PER_SESSION][MAX_NAME]; // List of client IDs in session
-//     int num_clients;                               // Number of clients currently in the session
-// } Session;
-
 typedef struct {
     char id[MAX_NAME];
     int socket; // for comm between server and user possibly
@@ -42,7 +35,7 @@ typedef struct {
 
 typedef struct {
     char session_id[MAX_NAME];
-    client_t *clients[MAX_CLIENTS_PER_SESSION];
+    client_t *s_clients[MAX_CLIENTS_PER_SESSION];
     int client_count;
 } session_t;
 

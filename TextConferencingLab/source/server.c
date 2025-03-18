@@ -25,6 +25,12 @@ pthread_mutex_t clients_mutex;
 // TOTAL ACTIVE USERS RIGHT NOW
 int total_active = 0;
 
+//  THE LOCK FOR THE SESSIONS (THE ACC ARRAY IS IN THE HEADER AS EXTERN)
+pthread_mutex_t sessions_mutex;  
+
+// function to find a client based on the sock
+//this is for like after your login because we dont know the client 
+
 void handle_client(void *arg) {
     // STEP 4: Here we will actually begin to handle the new client
     // we start off by dealing with the client message
@@ -37,6 +43,8 @@ void handle_client(void *arg) {
 
     int exited = 0;
 
+    // the special client will be set after the login
+    client_t *special_client = NULL;  
 
     // while we are still retrieveing messages
     // MIGHT CHANGE THIS TO A BOOL TALKING ABT EXIT
@@ -94,6 +102,10 @@ void handle_client(void *arg) {
                         strcpy(clients[i]->id, msg.source);
                         memset(clients[i]->session, 0, MAX_NAME);  
                         clients[i]->active = 1;
+
+                        // setting the special client
+                        special_client = clients[i];
+                        break;
                     }
                 }
 
@@ -158,7 +170,80 @@ void handle_client(void *arg) {
             
         }
         else if (msg.type == JOIN) {
-            // join
+            // before all this lock the database
+            // STEP 1: Start by checking if it already exists (idk what we should do if it does exist)
+            // STEP 2: If it doesnt afind the next available session
+            // STEP 3: Create the new session
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            // one is for checking if session exists other is vool fr checking if we actually found space
+            int session_exits = 0;
+            int session_index = -1;
+            
+            // Check if the session already exists
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (strcmp(sessions[i].session_id, msg.data) == 0) {
+                    // theres already a session w this name
+                    session_exits = 1;
+                    break;
+                }
+                if (sessions[i].client_count == 0 && session_index == -1) {
+                    // we found a place for teh session
+                    session_index = i;  // First empty slot for a new session
+                }
+            }
+
+            // setting up response message
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            strcpy(response.source, "server");
+
+            // ok now we handle the three cases
+
+            if (session_exits) {
+                // session exists doing an error for now saying exists try joining instead
+
+                response.type = JN_NAK;
+                strcpy(response.data, "Sorry! Session already exists");
+                response.size = strlen(response.data);
+
+            }
+            else if (session_index > -1) {
+                // we actually create a new session here
+                // we put in the session id name, change the client count, add the client 
+                // to the client list, then change the clients session to the 
+                // new cession we just made
+                strcpy(sessions[session_index].session_id, msg.data);
+                sessions[session_index].client_count = 1;
+                sessions[session_index].s_clients[0] = special_client;
+                strcpy(special_client->session, msg.data);
+
+                // setting up the response info stuff
+                response.type = NS_ACK;
+                strcpy(response.data, "Session created successfully!");
+
+                // just like a rpint check
+                printf("Session %s created\n", msg.data);
+
+            }
+            else {
+                // we have no space send like a failure msg
+
+                response.type = JN_NAK;
+                strcpy(response.data, "Sorry! Maxxed num of sessions");
+                response.size = strlen(response.data);
+
+            }
+
+            pthread_mutex_unlock(&sessions_mutex);
+
+            // sending the message
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(special_client->socket, buffer, strlen(buffer), 0);
+            
+
             
         }
         else if (msg.type == LEAVE_SESS) {
@@ -167,6 +252,8 @@ void handle_client(void *arg) {
        }
         else if (msg.type == NEW_SESS) {
             // new session
+
+            //
             
         }
         else if (msg.type == MESSAGE) {
