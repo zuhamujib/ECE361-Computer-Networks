@@ -98,7 +98,7 @@ int main() {
             printf("the buffer: %s:", send_buffer);
             fflush(stdout);
 
-            printf("Parsed values:\nClient ID: %s\nPassword: %s\nServer IP: %s\nPort: %d\n", msg.source, msg.data, server_ip, server_port);
+            printf("\nParsed values:\nClient ID: %s\nPassword: %s\nServer IP: %s\nPort: %d\n", msg.source, msg.data, server_ip, server_port);
             fflush(stdout); 
 
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);                                                     // send the message to server
@@ -144,6 +144,8 @@ int main() {
             strcpy((char *)msg.data, session_id);
             msg.size = strlen((char *)msg.data);
 
+            strcpy(msg.source, client_id); 
+
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
 
@@ -159,11 +161,17 @@ int main() {
             handle_Acks(&msg);
 
         } else if (strcmp(input, "/leavesession") == 0) {
+
             msg.type = LEAVE_SESS;
+
+            strcpy((char *)msg.data, "Left");
+            msg.size = strlen((char *)msg.data);
+
+            strcpy(msg.source, client_id); 
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
-            printf("Left session.\n");
+            printf("\nLeft session.\n");
 
         } else if (strncmp(input, "/createsession ", 14) == 0) {
             sscanf(input, "/createsession %s", session_id);
@@ -193,7 +201,10 @@ int main() {
         } else if (strcmp(input, "/list") == 0) {
             msg.type = QUERY;
 
+            strcpy(msg.source, client_id); 
+
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
+            
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
             
             struct sockaddr_in from_addr;
@@ -254,6 +265,8 @@ void handle_Acks(struct message *msg) {
             printf("Server response: %s\n", msg->data);
             break;
     }
+
+    fflush(stdout);
 }
 
 void trim_newline(char *str) {

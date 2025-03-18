@@ -92,7 +92,7 @@ void handle_client(void *arg) {
                 // we cant use a counter cuz deleted elements would be black
                 for (int i = 0; i < MAX_CLIENTS; i++) {
                     
-                    if (clients[i] && strcmp(clients[i]->id, msg.source)) { // need to check if the client is already logged in
+                    if (clients[i] && (strcmp(clients[i]->id, msg.source) == 0)) { // need to check if the client is already logged in
                         printf("clients[i]->id = %s, msg.source = %s\n", clients[i]->id, msg.source);
                         // send a LO_NAK
                         response.type = LO_NAK;
@@ -131,7 +131,7 @@ void handle_client(void *arg) {
                 response.type = LO_ACK;
                 strcpy(response.data, "Login successful");
                 response.size = strlen(response.data);
-                printf("User %s logged in successfully\n", msg.source);
+                printf("\nUser %s logged in successfully\n", msg.source);
 
             } else {
 
@@ -355,6 +355,7 @@ void handle_client(void *arg) {
             
             // Check if the session already exists
             for (int i = 0; i < MAX_SESSIONS; i++) {
+                //printf("NAME: %s", sessions[i].session_id);
                 if (strcmp(sessions[i].session_id, msg.data) == 0) {
                     // theres already a session w this name
                     session_exits = 1;
@@ -393,7 +394,7 @@ void handle_client(void *arg) {
 
                 // setting up the response info stuff
                 response.type = NS_ACK;
-                strcpy(response.data, "Session created successfully!");
+                strcpy(response.data, sessions[session_index].session_id);
 
                 // just like a rpint check
                 printf("Session %s created\n", msg.data);
