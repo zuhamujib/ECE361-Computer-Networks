@@ -47,14 +47,16 @@ void handle_client(void *arg) {
     while (!exited) {
         memset(buffer, 0, sizeof(buffer));
         memset(&msg, 0, sizeof(msg)); 
+
         ssize_t recv_size = recv(sock, buffer, sizeof(buffer), 0);
         if (recv_size <= 0) {
             break;
         }
 
+        printf("the buffer: %s \n", buffer);
         deserialize_msg(buffer, &msg);  // After we retrieve the client message, deserializing it
         
-        printf("Parsed values:\nClient ID: %s\nPassword: %s\n, Size: %d\n", msg.source, msg.data, msg.size);
+        printf("Parsed values:\nClient ID: %s\nData: %s\nSize: %d\n", msg.source, msg.data, msg.size);
         fflush(stdout); 
 
         // Based on the type of packet recieved we want to perform specific actions
@@ -140,9 +142,9 @@ void handle_client(void *arg) {
                 printf("Login failed for user %s\n", msg.source);
             }
 
-            char buffer[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
-            serialize_msg(&response, buffer, BUFFER_SIZE);
-            send(sock, buffer, strlen(buffer), 0);
+            char buffer_2[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
+            serialize_msg(&response, buffer_2, BUFFER_SIZE);
+            send(sock, buffer_2, strlen(buffer_2), 0);
         
         /************************************************** 2. EXIT A CLIENT CONNECTION **************************************************/
         } else if (msg.type == EXIT) {
@@ -251,9 +253,9 @@ void handle_client(void *arg) {
             pthread_mutex_unlock(&sessions_mutex);
 
             response.size = strlen(response.data);
-            char buffer[BUFFER_SIZE];
-            serialize_msg(&response, buffer, BUFFER_SIZE);
-            send(special_client->socket, buffer, strlen(buffer), 0);
+            char buffer_3[BUFFER_SIZE];
+            serialize_msg(&response, buffer_3, BUFFER_SIZE);
+            send(special_client->socket, buffer_3, strlen(buffer_3), 0);
 
             
 
@@ -331,9 +333,9 @@ void handle_client(void *arg) {
 
             // finally sending the response data to the user
             response.size = strlen(response.data);
-            char buffer[BUFFER_SIZE];
-            serialize_msg(&response, buffer, BUFFER_SIZE);
-            send(special_client->socket, buffer, strlen(buffer), 0);
+            char buffer_4[BUFFER_SIZE];
+            serialize_msg(&response, buffer_4, BUFFER_SIZE);
+            send(special_client->socket, buffer_4, strlen(buffer_4), 0);
 
 
             
@@ -409,9 +411,9 @@ void handle_client(void *arg) {
             pthread_mutex_unlock(&sessions_mutex);
 
             // sending the message
-            char buffer[BUFFER_SIZE];
-            serialize_msg(&response, buffer, BUFFER_SIZE);
-            send(special_client->socket, buffer, strlen(buffer), 0);
+            char buffer_5[BUFFER_SIZE];
+            serialize_msg(&response, buffer_5, BUFFER_SIZE);
+            send(special_client->socket, buffer_5, strlen(buffer_5), 0);
 
             
         /***************************************************** 6. SENDING A MESSAGE  ******************************************************/
@@ -459,7 +461,8 @@ void handle_client(void *arg) {
             }
 
             // technically we can send the bugger directly since already type of message 
-            serialize_msg(&msg, buffer, BUFFER_SIZE); 
+            char sender_buff[BUFFER_SIZE];
+            serialize_msg(&msg, sender_buff, BUFFER_SIZE); 
 
             // actually going through and sending the message to each client in the curent session
             for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
@@ -468,7 +471,7 @@ void handle_client(void *arg) {
 
                 // Skipped the sender dont know is we need to go this
                 if (receiver->socket != special_client->socket) {
-                    send(receiver->socket, buffer, strlen(buffer), 0);
+                    send(receiver->socket, sender_buff, strlen(sender_buff), 0);
                 }
             }
 

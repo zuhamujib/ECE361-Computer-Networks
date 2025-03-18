@@ -68,7 +68,8 @@ int main() {
         fgets(input, sizeof(input), stdin);                                                                 // reading the stdin
         trim_newline(input);
 
-        printf("%s", input);
+        //printf("%s", input);
+
         /********************************************** STEP 3: COMMAND HANDLING **************************************************/
         if (strncmp(input, "/login ", 7) == 0) {
             
@@ -169,6 +170,7 @@ int main() {
             msg.type = NEW_SESS;
             strcpy((char *)msg.data, session_id);
             msg.size = strlen((char *)msg.data);
+            printf("CLIENT %s", client_id);
             strcpy((char *)msg.source, client_id);
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
