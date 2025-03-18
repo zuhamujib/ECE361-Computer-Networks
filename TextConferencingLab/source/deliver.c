@@ -28,6 +28,7 @@ STEPS TO FOLLOW:
 
 /* **********************  HELPER FUNCTION PROTOTYES  ****************  */
 void handle_Acks(struct message *msg);
+void trim_newline(char *str);
 
 /* ******************************************************************** */
 
@@ -57,23 +58,24 @@ int main() {
     memset(send_buffer, 0, sizeof(send_buffer));
 
     char recieve_buffer[BUFFER_SIZE];
-    memset(send_buffer, 0, sizeof(send_buffer));
+    memset(recieve_buffer, 0, sizeof(send_buffer));
 
     while (1) {
         memset(&msg, 0, sizeof(msg));                                                              // refresh msg every iteration
+        memset(recieve_buffer, 0, sizeof(send_buffer));
+        memset(send_buffer, 0, sizeof(send_buffer));
         
         fgets(input, sizeof(input), stdin);                                                                 // reading the stdin
+        trim_newline(input);
 
+        printf("%s", input);
         /********************************************** STEP 3: COMMAND HANDLING **************************************************/
         if (strncmp(input, "/login ", 7) == 0) {
             
             sscanf(input, "/login %s %s %s %d", client_id, password, server_ip, &server_port);                   // parse the input
             msg.type = LOGIN;
 
-            socket_addr.sin_port = htons(server_port);   
-
-            printf("Parsed values:\nClient ID: %s\nPassword: %s\nServer IP: %s\nPort: %d\n", client_id, password, server_ip, server_port);
-            fflush(stdout); 
+            socket_addr.sin_port = htons(server_port);  
             
                                                // Store server address
             
@@ -91,13 +93,14 @@ int main() {
             strcpy((char *)msg.data, password);                                                                 // Store password
             msg.size = strlen((char *)msg.data);                                                                    // Store size
             
-
+            serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             printf("the buffer: %s:", send_buffer);
             fflush(stdout);
-            
-            serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
 
-            send(sockfd, &msg, sizeof(msg), 0);                                                     // send the message to server
+            printf("Parsed values:\nClient ID: %s\nPassword: %s\nServer IP: %s\nPort: %d\n", msg.source, msg.data, server_ip, server_port);
+            fflush(stdout); 
+
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);                                                     // send the message to server
             
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
@@ -111,12 +114,27 @@ int main() {
             handle_Acks(&msg);
             
         } else if (strcmp(input, "/logout") == 0) {
+            printf("entered logout if statament\n");
             msg.type = EXIT;
             msg.size = 0;
+            // msg.source = client_id;
+            strcpy(msg.source, client_id);                                                             // Store client_id
             
+            printf("Parsed values:\nClient ID: %s \nType: %d\n\n", msg.source, msg.type);
+            fflush(stdout); 
+
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
             printf("Logged out.\n");
+            
+            shutdown(sockfd, SHUT_RDWR);
+            close(sockfd);
+
+            sockfd = socket(AF_INET, SOCK_STREAM, 0);                                                           // SOCK_STREAM for TCP
+            if (sockfd < 0) {
+                perror("Socket failed");
+                return -1;
+            }
 
         } else if (strncmp(input, "/joinsession ", 13) == 0) {
             sscanf(input, "/joinsession %s", session_id);
@@ -229,5 +247,12 @@ void handle_Acks(struct message *msg) {
         default:
             printf("Server response: %s\n", msg->data);
             break;
+    }
+}
+
+void trim_newline(char *str) {
+    size_t len = strlen(str);
+    if (len > 0 && str[len - 1] == '\n') {
+        str[len - 1] = '\0';
     }
 }

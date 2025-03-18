@@ -22,12 +22,10 @@ char *hardcoded_users[][2] = {
 client_t *clients[MAX_CLIENTS];
 pthread_mutex_t clients_mutex;
 
-// TOTAL ACTIVE USERS RIGHT NOW
-int total_active = 0;
+int total_active = 0;   // TOTAL ACTIVE USERS RIGHT NOW
 
+// STEP 4: CLIENT PACKET HANDLING: start off by dealing with the client message
 void handle_client(void *arg) {
-    // STEP 4: Here we will actually begin to handle the new client
-    // we start off by dealing with the client message
 
     int sock = *((int *)arg);
     free(arg);
@@ -37,56 +35,67 @@ void handle_client(void *arg) {
 
     int exited = 0;
 
-
-    // while we are still retrieveing messages
-    // MIGHT CHANGE THIS TO A BOOL TALKING ABT EXIT
+    // while we are still retrieveing messages that is until the client does not logout
     while (!exited) {
-
         memset(buffer, 0, sizeof(buffer));
+        memset(&msg, 0, sizeof(msg)); 
         ssize_t recv_size = recv(sock, buffer, sizeof(buffer), 0);
         if (recv_size <= 0) {
             break;
         }
 
-        deserialize_msg(buffer, &msg);
+        deserialize_msg(buffer, &msg);  // After we retrieve the client message, deserializing it
+        
+        printf("Parsed values:\nClient ID: %s\nPassword: %s\n, Size: %d\n", msg.source, msg.data, msg.size);
+        fflush(stdout); 
 
-        // After we retrieve the client message, and deserializing it
-        // Based on the type we want to perform a different action
+        // Based on the type of packet recieved we want to perform specific actions
+
+
+        /******************************************************* 1. LOGGING IN A CLIENT  *************************************************/
         if (msg.type == LOGIN) {
-            // login
-
             // Step 1: Parse the information from the data
             // Step 2: Check the hardcoded database for the info
-            // Step 3: If the user is logged in, save there info to current user database
+            // Step 3: If the user is logged in, save there info to current user databas
 
-            // extracting message
-            char password[MAX_NAME] = {0};
+            char password[MAX_NAME] = {0};  // extracting message
             sscanf(msg.data, "%s", password);  // Extract password from msg.data
 
-            int logged = 0;
+            int logged = 0; // variable keeping track of access to a shared active user database to verify successful login (for mutexes)
 
-            // actually starting to parse through all the data to compare the source username and the password
-            for (int i = 0; hardcoded_users[i][0] != NULL; i++) {
+            for (int i = 0; hardcoded_users[i][0] != NULL; i++) {   // verifying username and password
             if (strcmp(msg.source, hardcoded_users[i][0]) == 0 && strcmp(password, hardcoded_users[i][1]) == 0) {
                 logged = 1;
                 break;
                 }
             }
 
-            // here we are setting up the response struct
-            struct message response;
+            struct message response;    // here we are setting up the response struct
             memset(&response, 0, sizeof(response));
             strcpy(response.source, "server");
 
             if (logged) {
-
                 // locking database
                 pthread_mutex_lock(&clients_mutex);
 
                 // here we parse through adn look for the first empty spot in the database
                 // we cant use a counter cuz deleted elements would be black
                 for (int i = 0; i < MAX_CLIENTS; i++) {
-                    if (clients[i] == NULL) {
+                    
+                    if (clients[i] && strcmp(clients[i]->id, msg.source)) { // need to check if the client is already logged in
+                        printf("clients[i]->id = %s, msg.source = %s\n", clients[i]->id, msg.source);
+                        // send a LO_NAK
+                        response.type = LO_NAK;
+                        strcpy(response.data, "Client already logged in");
+                        response.size = strlen(response.data);
+                        printf("Login failed for user %s\n", msg.source);
+
+                        char buffer[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
+                        serialize_msg(&response, buffer, BUFFER_SIZE);
+                        send(sock, buffer, strlen(buffer), 0);
+                        continue;
+
+                    } else if (clients[i] == NULL) {   // need to add the new client to the database of active clients
 
                         // we put in all the client info into the database, and put in an empty string into the session
                         clients[i] = (client_t *)malloc(sizeof(client_t));
@@ -96,13 +105,11 @@ void handle_client(void *arg) {
                         clients[i]->active = 1;
                     }
                 }
+                
+                pthread_mutex_unlock(&clients_mutex);   // technically would unlock the database here
 
-                // technically would unlock the database here
-                pthread_mutex_unlock(&clients_mutex);
-
-                // added one to the list of total users 
                 // may have to lock this value
-                total_active++;
+                total_active++;     // added one to the list of total users 
                 // would unlock here
 
                 // setting up the response ack message, tecbnically dont need data but I 
@@ -111,31 +118,32 @@ void handle_client(void *arg) {
                 strcpy(response.data, "Login successful");
                 response.size = strlen(response.data);
                 printf("User %s logged in successfully\n", msg.source);
-            }
-            else {
+
+            } else {
 
                 // the login failed so we prepare teh fialed login message
                 response.type = LO_NAK;
                 strcpy(response.data, "Invalid username or password");
                 response.size = strlen(response.data);
                 printf("Login failed for user %s\n", msg.source);
-
-
             }
 
-            // here now we are taking the response message and actually sending the 
-            // buffer response
-            char buffer[BUFFER_SIZE];
+            char buffer[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
             serialize_msg(&response, buffer, BUFFER_SIZE);
             send(sock, buffer, strlen(buffer), 0);
-        }
-        else if (msg.type == EXIT) {
+        
+        /************************************************** 2. EXIT A CLIENT CONNECTION **************************************************/
+        } else if (msg.type == EXIT) {
+            printf("getting to the exit part\n");
+            fflush(stdout);
+
             // Here we wanna remove the user from the list of active users
             // we would also have to make sure they are removed from any sessions
             // almost all parts might need a mutex i think 
 
             // Step 1: Go through the sessions and remove the user from any sessions possibly lock seessions info
             // Step 2: Go through active clients list and remove
+            int found = 0;
 
             pthread_mutex_lock(&clients_mutex);
             for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -146,48 +154,92 @@ void handle_client(void *arg) {
                     printf("Removing client: %s\n", clients[i]->id);
                     
                     // need to close the socket, and free eberyting we used
+                    shutdown(clients[i]->socket, SHUT_RDWR);
                     close(clients[i]->socket); 
+
                     free(clients[i]); 
                     clients[i] = NULL; 
+
+                    total_active = total_active - 1;  // decrement the number of active clients
+                    found = 1;
                     break;
                 }
             }
-            pthread_mutex_unlock(&clients_mutex);
 
-            total_active=total_active - 1;
-            
+            if (found) {
+                printf("Client %s successfully removed from active list.\n", msg.source);
+            } else { 
+                printf("Error: Client %s not found in active list!\n", msg.source);
+            }
+
+            pthread_mutex_unlock(&clients_mutex);
+            exited = 1;
+            shutdown(sock, SHUT_RDWR);
+            close(sock);
+            break;
         }
+
+        /***************************************************** 3. JOIN A SESSION  *********************************************************/
         else if (msg.type == JOIN) {
             // join
             
-        }
-        else if (msg.type == LEAVE_SESS) {
+
+        /***************************************************** 4. LEAVE A SESSION  *********************************************************/
+        } else if (msg.type == LEAVE_SESS) {
             // leave session
             
-       }
-        else if (msg.type == NEW_SESS) {
+        /***************************************************** 5. CREATE A NEW SESSION  ****************************************************/
+        } else if (msg.type == NEW_SESS) {
             // new session
             
-        }
-        else if (msg.type == MESSAGE) {
+        /***************************************************** 6. SENDING A MESSAGE  ******************************************************/
+        } else if (msg.type == MESSAGE) {
             // message
             
-        }
-        else if (msg.type == QUERY) {
+        /***************************************************** 7. QUERYING THE LIST OF ACTIVE CLIENTS  ************************************/
+        } else if (msg.type == QUERY) {
             // query
+            printf("Received QUERY request from client: %s\n", msg.source);
+
+            pthread_mutex_lock(&clients_mutex);
+
+            char response_data[BUFFER_SIZE] = {0};
+            // strcat(response_data, "Active Clients:\n");
+
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (clients[i] != NULL) {
+                    char temp[MAX_NAME + 20];  // Buffer for each client entry
+                    sprintf(temp, "- %s (%s)\n", clients[i]->id, 
+                            (strlen(clients[i]->session) > 0) ? clients[i]->session : "No session");
+                    strcat(response_data, temp);
+                }
+            }
+
+            // strcat(response_data, "\nAvailable Sessions:\n");
+            pthread_mutex_unlock(&clients_mutex);
+
+            // Prepare and send the response message
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            response.type = QU_ACK;
+            response.size = strlen(response_data);
+            strcpy(response.source, "server");
+            strcpy(response.data, response_data);
+
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(sock, buffer, strlen(buffer), 0);
+
+            printf("Sent QUERY response to client %s\n", msg.source);
             
-        }
-        else if (msg.type == QU_ACK) {
+        /***************************************************** 8. SENDING A QUERY ACK  ****************************************************/
+        } /* else if (msg.type == QU_ACK) {        // do we neeed this???
             // qu_ack can be removed
-                    
-        }
-
-
+        } */
     }
 
     // idt its ever gunan get here but idk if memory leaks will be a porblem
     pthread_mutex_destroy(&clients_mutex);
-
 }
 
 
@@ -262,6 +314,7 @@ int main(int argc, char *argv[]) {
         // in the handler function based on the input we will handle it
 
         // basically the hope is to start a thread and it will go to the thread handler 
+        
         pthread_t thread;
         int *new_sock = malloc(sizeof(int));
         *new_sock = client_fd;
