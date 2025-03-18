@@ -194,15 +194,225 @@ void handle_client(void *arg) {
         /***************************************************** 3. JOIN A SESSION  *********************************************************/
         else if (msg.type == JOIN) {
             // join
+            // STEP 1: lock and find the session index we wanna join
+            // STEP 2: create msg
+            // STEP 3: handle all cases: no session index (not in session), 
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            int session_index = -1;
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (sessions[i].client_count > 0 && strcmp(sessions[i].session_id, msg.data) == 0) {
+                    session_index = i;
+                    break;
+                }
+            }
+
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            strcpy(response.source, "server");
+
+
+            if (session_index == -1) {
+                // no session w that name
+                response.type = JN_NAK;
+                strcpy(response.data, "Session DNE");
+            }
+            else if (special_client->session[0] != '\0') {
+                // already in session cant join rn
+                // just checking first elem
+                response.type = JN_NAK;
+                strcpy(response.data, "Already in a session");
+            }
+            else if (sessions[session_index].client_count >= MAX_CLIENTS_PER_SESSION) {
+                // here maxxes out clients
+                response.type = JN_NAK;
+                strcpy(response.data, "Session full");
+            }
+            else {
+                // final case hopefully we can actually join
+
+                // setting up client indo basically the client index is the number of client currently in its session
+                // seeing the client array element with the client to add it into the array
+                // updating the count for next time
+                int client_index = sessions[session_index].client_count;
+                sessions[session_index].s_clients[client_index] = special_client;
+                sessions[session_index].client_count++;
+
+
+                strcpy(special_client->session, sessions[session_index].session_id);
+
+                response.type = JN_ACK;
+                strcpy(response.data, "Successfully joined session");
+                printf("oined session %s\n", special_client->session);
+            }
+
+            
+            pthread_mutex_unlock(&sessions_mutex);
+
+            response.size = strlen(response.data);
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(special_client->socket, buffer, strlen(buffer), 0);
+
             
 
         /***************************************************** 4. LEAVE A SESSION  *********************************************************/
         } else if (msg.type == LEAVE_SESS) {
             // leave session
+            // STEP 1: lock the sessions database
+            // STEP 2: Retrieve the actual index of the ID using the sesion name
+            // STEP 3: in the session, look through the list of arrays, adn find the client again in the sessions array
+            // STEP 4: If the client is last in the session delete the whole session
+            
+            // once we find the thing in the sessions array we can removce it from the actual dessions array
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            int session_index = -1;
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (sessions[i].client_count > 0 && strcmp(sessions[i].session_id, special_client->session) == 0) {
+                    session_index = i;
+                    break;
+                }
+            }
+
+            // creating teh msggg
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            strcpy(response.source, "server");
+
+            // finding the stuff :(
+            if (session_index == -1) {
+                // basically if someone trying to leave but not in a session
+                response.type = JN_NAK;
+                strcpy(response.data, "Not in a session");
+            } else {
+                // check all the clients of the current session
+
+                for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
+
+                    // if the current one is the client then remove it
+                    if (sessions[session_index].s_clients[curr_client] == special_client) {
+
+                        // just in this case we are going to shift the remaining clients up 
+
+                        for (int shift = curr_client; shift < sessions[session_index].client_count - 1; shift++) {
+                            sessions[session_index].s_clients[shift] = sessions[session_index].s_clients[shift + 1];
+                        }
+
+                        sessions[session_index].client_count--;
+
+                        break;
+
+                    }
+
+                }
+
+                // we check if the client count for teh session became 0 so we can delete it
+                if (sessions[session_index].client_count == 0) {
+
+                    // full reset the session 
+                    memset(&sessions[session_index], 0, sizeof(session_t)); 
+                    printf("Last client has left, no more sessions!\n", special_client->session);
+                }
+
+                // finally full clear the memory for that clients sesion
+                memset(special_client->session, 0, MAX_NAME);
+
+                // preparing end respondes
+                response.type = JN_ACK;
+                strcpy(response.data, "Successfully left session");
+                printf("left session %s\n", special_client->session);
+
+            }
+
+            pthread_mutex_unlock(&sessions_mutex);
+
+            // finally sending the response data to the user
+            response.size = strlen(response.data);
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(special_client->socket, buffer, strlen(buffer), 0);
+
+
             
         /***************************************************** 5. CREATE A NEW SESSION  ****************************************************/
         } else if (msg.type == NEW_SESS) {
             // new session
+
+            // STEP 1: Start by checking if it already exists (idk what we should do if it does exist)
+            // STEP 2: If it doesnt afind the next available session
+            // STEP 3: Create the new session
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            // one is for checking if session exists other is vool fr checking if we actually found space
+            int session_exits = 0;
+            int session_index = -1;
+            
+            // Check if the session already exists
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (strcmp(sessions[i].session_id, msg.data) == 0) {
+                    // theres already a session w this name
+                    session_exits = 1;
+                    break;
+                }
+                if (sessions[i].client_count == 0 && session_index == -1) {
+                    // we found a place for teh session
+                    session_index = i;
+                }
+            }
+
+            // setting up response message
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            strcpy(response.source, "server");
+
+            // ok now we handle the three cases
+
+            if (session_exits) {
+                // session exists doing an error for now saying exists try joining instead
+
+                response.type = JN_NAK;
+                strcpy(response.data, "Sorry! Session already exists");
+                response.size = strlen(response.data);
+
+            }
+            else if (session_index > -1) {
+                // we actually create a new session here
+                // we put in the session id name, change the client count, add the client 
+                // to the client list, then change the clients session to the 
+                // new cession we just made
+                strcpy(sessions[session_index].session_id, msg.data);
+                sessions[session_index].client_count = 1;
+                sessions[session_index].s_clients[0] = special_client;
+                strcpy(special_client->session, msg.data);
+
+                // setting up the response info stuff
+                response.type = NS_ACK;
+                strcpy(response.data, "Session created successfully!");
+
+                // just like a rpint check
+                printf("Session %s created\n", msg.data);
+
+            }
+            else {
+                // we have no space send like a failure msg
+
+                response.type = JN_NAK;
+                strcpy(response.data, "Sorry! Maxxed num of sessions");
+                response.size = strlen(response.data);
+
+            }
+
+            pthread_mutex_unlock(&sessions_mutex);
+
+            // sending the message
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(special_client->socket, buffer, strlen(buffer), 0);
+
             
         /***************************************************** 6. SENDING A MESSAGE  ******************************************************/
         } else if (msg.type == MESSAGE) {
