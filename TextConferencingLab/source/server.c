@@ -18,9 +18,12 @@ char *hardcoded_users[][2] = {
         {NULL, NULL}  // End marker
     };
 
-// ACTIVE USERS DATABASE
+// ACTIVE USERS DATABASE AND LOCK FOR CLIENTS
 client_t *clients[MAX_CLIENTS];
-// WILL LIKELY HAVE TO LOCK THIS DATABASEEEE
+pthread_mutex_t clients_mutex;
+
+// TOTAL ACTIVE USERS RIGHT NOW
+int total_active = 0;
 
 void handle_client(void *arg) {
     // STEP 4: Here we will actually begin to handle the new client
@@ -77,7 +80,8 @@ void handle_client(void *arg) {
 
             if (logged) {
 
-                // technically would lock the database here
+                // locking database
+                pthread_mutex_lock(&clients_mutex);
 
                 // here we parse through adn look for the first empty spot in the database
                 // we cant use a counter cuz deleted elements would be black
@@ -94,6 +98,12 @@ void handle_client(void *arg) {
                 }
 
                 // technically would unlock the database here
+                pthread_mutex_unlock(&clients_mutex);
+
+                // added one to the list of total users 
+                // may have to lock this value
+                total_active++;
+                // would unlock here
 
                 // setting up the response ack message, tecbnically dont need data but I 
                 // put it in caus eidk how the blank will work in the serialize function
@@ -120,7 +130,31 @@ void handle_client(void *arg) {
             send(sock, buffer, strlen(buffer), 0);
         }
         else if (msg.type == EXIT) {
-            // exit
+            // Here we wanna remove the user from the list of active users
+            // we would also have to make sure they are removed from any sessions
+            // almost all parts might need a mutex i think 
+
+            // Step 1: Go through the sessions and remove the user from any sessions possibly lock seessions info
+            // Step 2: Go through active clients list and remove
+
+            pthread_mutex_lock(&clients_mutex);
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (clients[i] && strcmp(clients[i]->id, msg.source) == 0) {
+                    // Once we find the client with the user we are currently working with
+                    // we remove the client 
+
+                    printf("Removing client: %s\n", clients[i]->id);
+                    
+                    // need to close the socket, and free eberyting we used
+                    close(clients[i]->socket); 
+                    free(clients[i]); 
+                    clients[i] = NULL; 
+                    break;
+                }
+            }
+            pthread_mutex_unlock(&clients_mutex);
+
+            total_active=total_active - 1;
             
         }
         else if (msg.type == JOIN) {
@@ -150,6 +184,9 @@ void handle_client(void *arg) {
 
 
     }
+
+    // idt its ever gunan get here but idk if memory leaks will be a porblem
+    pthread_mutex_destroy(&clients_mutex);
 
 }
 
@@ -203,6 +240,8 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in client_addr;
     socklen_t addr_size;
     
+    // creating teh mutex for the list of active clients
+    pthread_mutex_init(&clients_mutex, NULL);
 
     while (1) {
 
