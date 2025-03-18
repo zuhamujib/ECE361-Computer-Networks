@@ -473,10 +473,6 @@ void handle_client(void *arg) {
             }
 
             pthread_mutex_unlock(&sessions_mutex);
-
-
-        }
-        else if (msg.type == QUERY) {
             
         /***************************************************** 7. QUERYING THE LIST OF ACTIVE CLIENTS  ************************************/
         } else if (msg.type == QUERY) {
@@ -491,7 +487,7 @@ void handle_client(void *arg) {
             for (int i = 0; i < MAX_CLIENTS; i++) {
                 if (clients[i] != NULL) {
                     char temp[MAX_NAME + 20];  // Buffer for each client entry
-                    sprintf(temp, "- %s (%s)\n", clients[i]->id, 
+                    sprintf(temp, "CLIENT: %s in session: %s\n", clients[i]->id, 
                             (strlen(clients[i]->session) > 0) ? clients[i]->session : "No session");
                     strcat(response_data, temp);
                 }

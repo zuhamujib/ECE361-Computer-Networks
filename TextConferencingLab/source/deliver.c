@@ -144,7 +144,7 @@ int main() {
             msg.size = strlen((char *)msg.data);
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
 
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
@@ -161,7 +161,7 @@ int main() {
             msg.type = LEAVE_SESS;
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
             printf("Left session.\n");
 
         } else if (strncmp(input, "/createsession ", 14) == 0) {
@@ -171,7 +171,7 @@ int main() {
             msg.size = strlen((char *)msg.data);
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
 
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
@@ -188,7 +188,7 @@ int main() {
             msg.type = QUERY;
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
             
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
@@ -205,7 +205,7 @@ int main() {
             msg.type = EXIT;
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
             printf("Exiting client.\n");
             break;
 
@@ -214,7 +214,7 @@ int main() {
             msg.type = MESSAGE;
             strcpy((char *)msg.data, input);
             msg.size = strlen((char *)msg.data);
-            send(sockfd, &msg, sizeof(msg), 0);
+            send(sockfd, &send_buffer, sizeof(send_buffer), 0);
         }
     }
 
