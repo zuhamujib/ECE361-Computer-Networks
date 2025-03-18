@@ -170,6 +170,67 @@ void handle_client(void *arg) {
             
         }
         else if (msg.type == JOIN) {
+
+            // STEP 1: lock and find the session index we wanna join
+            // STEP 2: create msg
+            // STEP 3: handle all cases: no session index (not in session), 
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            int session_index = -1;
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (sessions[i].client_count > 0 && strcmp(sessions[i].session_id, msg.data) == 0) {
+                    session_index = i;
+                    break;
+                }
+            }
+
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            strcpy(response.source, "server");
+
+
+            if (session_index == -1) {
+                // no session w that name
+                response.type = JN_NAK;
+                strcpy(response.data, "Session DNE");
+            }
+            else if (special_client->session[0] != '\0') {
+                // already in session cant join rn
+                // just checking first elem
+                response.type = JN_NAK;
+                strcpy(response.data, "Already in a session");
+            }
+            else if (sessions[session_index].client_count >= MAX_CLIENTS_PER_SESSION) {
+                // here maxxes out clients
+                response.type = JN_NAK;
+                strcpy(response.data, "Session full");
+            }
+            else {
+                // final case hopefully we can actually join
+
+                // setting up client indo basically the client index is the number of client currently in its session
+                // seeing the client array element with the client to add it into the array
+                // updating the count for next time
+                int client_index = sessions[session_index].client_count;
+                sessions[session_index].s_clients[client_index] = special_client;
+                sessions[session_index].client_count++;
+
+
+                strcpy(special_client->session, sessions[session_index].session_id);
+
+                response.type = JN_ACK;
+                strcpy(response.data, "Successfully joined session");
+                printf("oined session %s\n", special_client->session);
+            }
+
+            
+            pthread_mutex_unlock(&sessions_mutex);
+
+            response.size = strlen(response.data);
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(special_client->socket, buffer, strlen(buffer), 0);
             
 
             
@@ -325,6 +386,9 @@ void handle_client(void *arg) {
         else if (msg.type == MESSAGE) {
             // message
             
+            // Step 1: basically retrieve the session of the current client
+            // Step 2: Parse through all the users and send them each a message 
+            // Step 3: keep in mind your going to have to use that specific users SOCK
         }
         else if (msg.type == QUERY) {
             // query
