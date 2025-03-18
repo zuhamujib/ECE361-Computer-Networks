@@ -220,9 +220,20 @@ int main() {
 
         } else if (strcmp(input, "/quit") == 0) {
             msg.type = EXIT;
+            msg.size = 0;
+            // msg.source = client_id;
+            strcpy(msg.source, client_id);                                                             // Store client_id
+            
+            printf("Parsed values:\nClient ID: %s \nType: %d\n\n", msg.source, msg.type);
+            fflush(stdout); 
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
+            printf("Logged out.\n");
+            
+            shutdown(sockfd, SHUT_RDWR);
+            close(sockfd);
+
             printf("Exiting client.\n");
             break;
 
@@ -231,6 +242,8 @@ int main() {
             msg.type = MESSAGE;
             strcpy((char *)msg.data, input);
             msg.size = strlen((char *)msg.data);
+            strcpy(msg.source, client_id);    
+            serialize_msg(&msg, send_buffer, sizeof(send_buffer));
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
         }
     }

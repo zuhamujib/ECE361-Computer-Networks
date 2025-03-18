@@ -425,6 +425,9 @@ void handle_client(void *arg) {
             // Step 2: Parse through all the users and send them each a message 
             // Step 3: keep in mind your going to have to use that specific users SOCK
 
+            printf("Made it to message\n");
+            fflush(stdout);
+
             pthread_mutex_lock(&sessions_mutex);
 
             // finding the session
@@ -436,6 +439,9 @@ void handle_client(void *arg) {
                     break;
                 }
             }
+
+            printf("past ses\n");
+            fflush(stdout);
 
             // if not found then the user isnt currently in a session
             if (session_index == -1) {
@@ -461,6 +467,9 @@ void handle_client(void *arg) {
                 return;
             }
 
+
+            printf("about to send to everyone\n");
+            fflush(stdout);
             // technically we can send the bugger directly since already type of message 
             char sender_buff[BUFFER_SIZE];
             serialize_msg(&msg, sender_buff, BUFFER_SIZE); 
@@ -471,9 +480,7 @@ void handle_client(void *arg) {
                 client_t *receiver = sessions[session_index].s_clients[curr_client];
 
                 // Skipped the sender dont know is we need to go this
-                if (receiver->socket != special_client->socket) {
-                    send(receiver->socket, sender_buff, strlen(sender_buff), 0);
-                }
+        
             }
 
             pthread_mutex_unlock(&sessions_mutex);
@@ -487,7 +494,8 @@ void handle_client(void *arg) {
 
             char response_data[BUFFER_SIZE] = {0};
             // strcat(response_data, "Active Clients:\n");
-
+            
+            printf("%p", clients);
             for (int i = 0; i < MAX_CLIENTS; i++) {
                 if (clients[i] != NULL) {
                     char temp[MAX_NAME + 20];  // Buffer for each client entry
