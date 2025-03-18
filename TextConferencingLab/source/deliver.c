@@ -17,6 +17,7 @@ STEPS TO FOLLOW:
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 /* **********************  ALL INCLUDE HEADERS  ********************** */
 #include "message.h"
@@ -29,27 +30,75 @@ STEPS TO FOLLOW:
 /* **********************  HELPER FUNCTION PROTOTYES  ****************  */
 void handle_Acks(struct message *msg);
 void trim_newline(char *str);
+void *input_thread(void *arg);
+void *recv_thread(void *arg);
 
 /* ******************************************************************** */
+int sockfd;
+char client_id[MAX_NAME], session_id[MAX_NAME];
+char server_ip[MAX_NAME]; 
+int server_port; 
 
+struct sockaddr_in socket_addr;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex to protect shared socket
+int connected = 0;
 
 int main() {
 
     /************************************************** STEP 1: CREATE SOCKET ***************************************************/
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);                                                           // SOCK_STREAM for TCP
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);                                                           // SOCK_STREAM for TCP
     if (sockfd < 0) {
         perror("Socket failed");
         return -1;
     }
 
-    /************************************************** STEP 2: TERMINAL STDIN **************************************************/
-    char input[INPUT_LEN];
-    char client_id[MAX_NAME], password[MAX_NAME], session_id[MAX_NAME];
-    char server_ip[MAX_NAME]; 
-    int server_port;           
-    
-    struct sockaddr_in socket_addr;
     socket_addr.sin_family = AF_INET;                                                             // internet address family IPv4
+
+    /************************************************** STEP 2: TERMINAL STDIN **************************************************/
+    
+    // Create threads for input and receiving messages
+    pthread_t input_tid, recv_tid;
+    pthread_create(&input_tid, NULL, input_thread, NULL); // Start input handling threa
+    pthread_create(&recv_tid, NULL, recv_thread, NULL); // Start receiving thread
+
+    // Wait for threads to finish
+    pthread_join(recv_tid, NULL);
+    pthread_join(input_tid, NULL);
+
+    close(sockfd); // Close the socket
+    return 0;
+}
+
+
+/* Function for receiving messages from the server */
+void *recv_thread(void *arg) {
+    char recieve_buffer[BUFFER_SIZE];
+    struct message msg;
+
+    while (1) {
+
+        // Wait for the connection to be established before receiving
+        while (!connected) {
+            usleep(100000); // Wait 100ms and check again (avoid busy-waiting)
+        }
+
+        memset(recieve_buffer, 0, sizeof(recieve_buffer));
+        ssize_t bytes_recieved = recv(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0);
+        if (bytes_recieved < 0) {
+            printf("Error receiving message from server.\n");
+            exit(1);
+        }
+
+        memset(&msg, 0, sizeof(msg));
+        deserialize_msg(recieve_buffer, &msg);
+        handle_Acks(&msg);
+    }
+    return NULL;
+}
+
+void *input_thread(void *arg) {
+    char input[INPUT_LEN];
+    char password[MAX_NAME];
 
     struct message msg;
     memset(&msg, 0, sizeof(msg));                                                                   // initialize memory to 0
@@ -76,9 +125,7 @@ int main() {
             sscanf(input, "/login %s %s %s %d", client_id, password, server_ip, &server_port);                   // parse the input
             msg.type = LOGIN;
 
-            socket_addr.sin_port = htons(server_port);  
-            
-                                               // Store server address
+            socket_addr.sin_port = htons(server_port);                                                          // Store server port
             
             if (inet_pton(AF_INET, server_ip, &socket_addr.sin_addr) <= 0) {                        // convert ip address to binary
                 perror("Invalid IP address");
@@ -89,6 +136,8 @@ int main() {
                 perror("Connection failed");
                 continue;
             }
+
+            connected = 1;
 
             strcpy((char *)msg.source, client_id);                                                             // Store client_id
             strcpy((char *)msg.data, password);                                                                 // Store password
@@ -102,7 +151,7 @@ int main() {
             fflush(stdout); 
 
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);                                                     // send the message to server
-            
+            /*
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
             ssize_t bytes_recieved = recv(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0);
@@ -114,8 +163,9 @@ int main() {
             deserialize_msg(recieve_buffer, &msg);
                                                                  // deseriallize the msg
             handle_Acks(&msg);
-            
+            */
         } else if (strcmp(input, "/logout") == 0) {
+            connected = 0;
             printf("entered logout if statament\n");
             msg.type = EXIT;
             msg.size = 0;
@@ -135,7 +185,7 @@ int main() {
             sockfd = socket(AF_INET, SOCK_STREAM, 0);                                                           // SOCK_STREAM for TCP
             if (sockfd < 0) {
                 perror("Socket failed");
-                return -1;
+                exit(1);
             }
 
         } else if (strncmp(input, "/joinsession ", 13) == 0) {
@@ -149,7 +199,7 @@ int main() {
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
-
+/*
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
             ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
@@ -160,7 +210,7 @@ int main() {
 
             deserialize_msg(recieve_buffer, &msg);                                                       // deseriallize the msg
             handle_Acks(&msg);
-
+*/
         } else if (strcmp(input, "/leavesession") == 0) {
 
             msg.type = LEAVE_SESS;
@@ -187,7 +237,7 @@ int main() {
             fflush(stdout); 
 
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
-
+/*
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
             ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
@@ -198,7 +248,7 @@ int main() {
 
             deserialize_msg(recieve_buffer, &msg);  
             handle_Acks(&msg); 
-
+*/
         } else if (strcmp(input, "/list") == 0) {
             msg.type = QUERY;
 
@@ -207,7 +257,7 @@ int main() {
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
             
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
-            
+            /*
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
             ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
@@ -222,7 +272,7 @@ int main() {
             printf("msg.data: %s\n", msg.data);
             
             handle_Acks(&msg);
-
+*/
         } else if (strcmp(input, "/quit") == 0) {
             msg.type = EXIT;
             msg.size = 0;
@@ -254,8 +304,6 @@ int main() {
     }
 
     close(sockfd);
-
-    return 0;
 }
 
 // **Function to process acknowledgments from the server**
