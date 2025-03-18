@@ -402,6 +402,6 @@ int main(int argc, char *argv[]) {
 /* SOME ASSUMPTIONS I MADE WHILE IMPLEMENTING DELIVER.C 
 - when a log in is unsuccessful, server sends an error message through a LO_NAK pakcet in the datat field
     - for example: incorrect password
-- 
+-  // oh no
 
 */
