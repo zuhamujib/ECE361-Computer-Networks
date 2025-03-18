@@ -513,8 +513,8 @@ void handle_client(void *arg) {
 
             char response_data[BUFFER_SIZE] = {0};
             // strcat(response_data, "Active Clients:\n");
-            
-            printf("%p", clients);
+            strcat(response_data, "\n\n Active clients: \n");
+            // printf("%p", clients);
             for (int i = 0; i < MAX_CLIENTS; i++) {
                 char temp[MAX_NAME + 50]; 
                 if (clients[i] != NULL) {
@@ -526,6 +526,21 @@ void handle_client(void *arg) {
 
                     strcat(response_data, temp);
                     printf("\nREESP: %s", response_data);
+                }
+            }
+
+            strcat(response_data, "\n\n Active sessions: \n");
+
+            for (int j = 0; j < MAX_SESSIONS; j++) {
+                char temp1[MAX_NAME + 50]; 
+                if (sessions[j].session_id[0] != '\0') {
+                    printf("SESSION INDEX: %d\n", j);
+                    // printf("info: %s", clients[i]->id);
+                    //char temp[MAX_NAME + 50];  // Buffer for each client entry
+                    sprintf(temp1, "SESSION: %s \n", sessions[j].session_id);
+
+                    strcat(response_data, temp1);
+                    // printf("\nREESP: %s", response_data);
                 }
             }
 
