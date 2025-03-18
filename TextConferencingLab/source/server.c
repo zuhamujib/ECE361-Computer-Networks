@@ -218,6 +218,7 @@ void handle_client(void *arg) {
 
             if (session_index == -1) {
                 // no session w that name
+                printf("here");
                 response.type = JN_NAK;
                 strcpy(response.data, "Session DNE");
             }
@@ -247,7 +248,7 @@ void handle_client(void *arg) {
 
                 response.type = JN_ACK;
                 strcpy(response.data, "Successfully joined session");
-                printf("oined session %s\n", special_client->session);
+                printf("Joined session %s\n", special_client->session);
             }
 
             
@@ -256,6 +257,7 @@ void handle_client(void *arg) {
             response.size = strlen(response.data);
             char buffer_3[BUFFER_SIZE];
             serialize_msg(&response, buffer_3, BUFFER_SIZE);
+            printf("BUFFER IN JOIN &s", buffer_3);
             send(special_client->socket, buffer_3, strlen(buffer_3), 0);
 
             
@@ -292,9 +294,11 @@ void handle_client(void *arg) {
                 strcpy(response.data, "Not in a session");
             } else {
                 // check all the clients of the current session
-
+                response.type = JN_ACK;
+                strcpy(response.data, "Successfully left session");
+                printf("working here\n");
                 for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
-
+                    
                     // if the current one is the client then remove it
                     if (sessions[session_index].s_clients[curr_client] == special_client) {
 
@@ -317,26 +321,26 @@ void handle_client(void *arg) {
 
                     // full reset the session 
                     memset(&sessions[session_index], 0, sizeof(session_t)); 
-                    printf("Last client has left, no more sessions!\n", special_client->session);
+                    printf("Last client has left, no more sessions!\n");
                 }
 
                 // finally full clear the memory for that clients sesion
                 memset(special_client->session, 0, MAX_NAME);
 
                 // preparing end respondes
-                response.type = JN_ACK;
-                strcpy(response.data, "Successfully left session");
-                printf("left session %s\n", special_client->session);
+                printf("finished handling leave\n");
 
             }
 
             pthread_mutex_unlock(&sessions_mutex);
 
-            // finally sending the response data to the user
-            response.size = strlen(response.data);
-            char buffer_4[BUFFER_SIZE];
-            serialize_msg(&response, buffer_4, BUFFER_SIZE);
-            send(special_client->socket, buffer_4, strlen(buffer_4), 0);
+           // finally sending the response data to the user
+            // response.size = strlen(response.data);
+            // char buffer_4[BUFFER_SIZE];
+            // serialize_msg(&response, buffer_4, BUFFER_SIZE);
+            // printf("BUFFER LEAVE: %s", buffer_4);
+            // fflush(stdout);
+            // send(special_client->socket, buffer_4, strlen(buffer_4), 0);
 
 
             
