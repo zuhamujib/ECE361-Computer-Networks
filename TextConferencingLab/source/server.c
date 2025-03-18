@@ -170,7 +170,84 @@ void handle_client(void *arg) {
             
         }
         else if (msg.type == JOIN) {
-            // before all this lock the database
+            
+
+            
+        }
+        else if (msg.type == LEAVE_SESS) {
+            // leave session
+
+
+            // STEP 1: lock the sessions database
+            // STEP 2: Retrieve the actual index of the ID using the sesion name
+            // STEP 3: in the session, look through the list of arrays, adn find the client again in the sessions array
+            // once we find the thing in the sessions array we can removce it from the actual dessions array
+            pthread_mutex_lock(&sessions_mutex);
+
+            int session_index = -1;
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (sessions[i].client_count > 0 && strcmp(sessions[i].session_id, special_client->session) == 0) {
+                    session_index = i;
+                    break;
+                }
+            }
+
+            // creating teh msggg
+            struct message response;
+            memset(&response, 0, sizeof(response));
+            strcpy(response.source, "server");
+
+            // finding the stuff :(
+            if (session_index == -1) {
+                // basically if someone trying to leave but not in a session
+                response.type = JN_NAK;
+                strcpy(response.data, "Not in a session");
+            } else {
+                // check all the clients of the current session
+
+                for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
+
+                    // if the current one is the client then remove it
+                    if (sessions[session_index].s_clients[curr_client] == special_client) {
+
+                        // just in this case we are going to shift the remaining sessions up 
+
+                        for (int shift = curr_client; shift < sessions[session_index].client_count - 1; shift++) {
+                            sessions[session_index].s_clients[shift] = sessions[session_index].s_clients[shift + 1];
+                        }
+
+                        sessions[session_index].client_count--;
+
+                        break;
+
+                    }
+
+                }
+
+                // finally full clear the memory for that clients sesion
+                memset(special_client->session, 0, MAX_NAME);
+
+                // preparing end respondes
+                response.type = JN_ACK;
+                strcpy(response.data, "Successfully left session");
+                printf("left session %s\n", special_client->session);
+
+            }
+
+            pthread_mutex_unlock(&sessions_mutex);
+
+            // finally sending the response data to the user
+            response.size = strlen(response.data);
+            char buffer[BUFFER_SIZE];
+            serialize_msg(&response, buffer, BUFFER_SIZE);
+            send(special_client->socket, buffer, strlen(buffer), 0);
+
+
+            
+       }
+        else if (msg.type == NEW_SESS) {
+            // new session
+                        // before all this lock the database
             // STEP 1: Start by checking if it already exists (idk what we should do if it does exist)
             // STEP 2: If it doesnt afind the next available session
             // STEP 3: Create the new session
@@ -190,7 +267,7 @@ void handle_client(void *arg) {
                 }
                 if (sessions[i].client_count == 0 && session_index == -1) {
                     // we found a place for teh session
-                    session_index = i;  // First empty slot for a new session
+                    session_index = i;
                 }
             }
 
@@ -242,18 +319,7 @@ void handle_client(void *arg) {
             char buffer[BUFFER_SIZE];
             serialize_msg(&response, buffer, BUFFER_SIZE);
             send(special_client->socket, buffer, strlen(buffer), 0);
-            
 
-            
-        }
-        else if (msg.type == LEAVE_SESS) {
-            // leave session
-            
-       }
-        else if (msg.type == NEW_SESS) {
-            // new session
-
-            //
             
         }
         else if (msg.type == MESSAGE) {
@@ -263,10 +329,6 @@ void handle_client(void *arg) {
         else if (msg.type == QUERY) {
             // query
             
-        }
-        else if (msg.type == QU_ACK) {
-            // qu_ack can be removed
-                    
         }
 
 
