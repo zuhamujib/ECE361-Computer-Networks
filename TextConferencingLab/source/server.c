@@ -24,6 +24,12 @@ pthread_mutex_t clients_mutex;
 
 int total_active = 0;   // TOTAL ACTIVE USERS RIGHT NOW
 
+//  THE LOCK FOR THE SESSIONS (THE ACC ARRAY IS IN THE HEADER AS EXTERN)
+pthread_mutex_t sessions_mutex;  
+
+// function to find a client based on the sock
+//this is for like after your login because we dont know the client 
+
 // STEP 4: CLIENT PACKET HANDLING: start off by dealing with the client message
 void handle_client(void *arg) {
 
@@ -35,6 +41,8 @@ void handle_client(void *arg) {
 
     int exited = 0;
 
+    // the special client will be set after the login
+    client_t *special_client = NULL;  
     // while we are still retrieveing messages that is until the client does not logout
     while (!exited) {
         memset(buffer, 0, sizeof(buffer));
@@ -103,6 +111,10 @@ void handle_client(void *arg) {
                         strcpy(clients[i]->id, msg.source);
                         memset(clients[i]->session, 0, MAX_NAME);  
                         clients[i]->active = 1;
+
+                        // setting the special client
+                        special_client = clients[i];
+                        break;
                     }
                 }
                 
@@ -195,6 +207,66 @@ void handle_client(void *arg) {
         /***************************************************** 6. SENDING A MESSAGE  ******************************************************/
         } else if (msg.type == MESSAGE) {
             // message
+            
+            // Step 1: basically retrieve the session of the current client
+            // Step 2: Parse through all the users and send them each a message 
+            // Step 3: keep in mind your going to have to use that specific users SOCK
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            // finding the session
+            int session_index = -1;
+
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (strcmp(sessions[i].session_id, special_client->session) == 0) {
+                    session_index = i;
+                    break;
+                }
+            }
+
+            // if not found then the user isnt currently in a session
+            if (session_index == -1) {
+                printf("Error: Session not found for client %s.\n", special_client->id);
+
+                // need to send an error message 
+                struct message error_msg;
+                memset(&error_msg, 0, sizeof(error_msg));
+
+                // theres no like error message associated with the error so ill just send it in a message back
+                error_msg.type = MESSAGE;
+                strcpy(error_msg.source, "server");
+                strcpy(error_msg.data, "Not in a Session");
+                error_msg.size = strlen(error_msg.data);
+
+                // serializing adn sending error message
+                char error_buffer[BUFFER_SIZE];
+                serialize_msg(&error_msg, error_buffer, BUFFER_SIZE);
+                send(special_client->socket, error_buffer, strlen(error_buffer), 0);
+
+
+                pthread_mutex_unlock(&sessions_mutex);
+                return;
+            }
+
+            // technically we can send the bugger directly since already type of message 
+            serialize_msg(&msg, buffer, BUFFER_SIZE); 
+
+            // actually going through and sending the message to each client in the curent session
+            for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
+                // send the data message to all clients 
+                client_t *receiver = sessions[session_index].s_clients[curr_client];
+
+                // Skipped the sender dont know is we need to go this
+                if (receiver->socket != special_client->socket) {
+                    send(receiver->socket, buffer, strlen(buffer), 0);
+                }
+            }
+
+            pthread_mutex_unlock(&sessions_mutex);
+
+
+        }
+        else if (msg.type == QUERY) {
             
         /***************************************************** 7. QUERYING THE LIST OF ACTIVE CLIENTS  ************************************/
         } else if (msg.type == QUERY) {
