@@ -105,13 +105,14 @@ int main() {
             
             struct sockaddr_in from_addr;
             socklen_t from_len = sizeof(from_addr);
-            ssize_t bytes_recieved = recvfrom(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0, (struct sockaddr*)&from_addr, &from_len);
+            ssize_t bytes_recieved = recv(sockfd, &recieve_buffer, sizeof(recieve_buffer), 0);
             if (bytes_recieved < 0) {
                 printf("Error recieving message from server.\n");
                 exit(1);
             }
 
-            deserialize_msg(recieve_buffer, &msg);                                                       // deseriallize the msg
+            deserialize_msg(recieve_buffer, &msg);
+                                                                 // deseriallize the msg
             handle_Acks(&msg);
             
         } else if (strcmp(input, "/logout") == 0) {
@@ -215,7 +216,11 @@ int main() {
                 exit(1);
             }
 
-            deserialize_msg(recieve_buffer, &msg);   
+            deserialize_msg(recieve_buffer, &msg); 
+
+            printf("buffer: %s\n", recieve_buffer);  
+            printf("msg.data: %s\n", msg.data);
+            
             handle_Acks(&msg);
 
         } else if (strcmp(input, "/quit") == 0) {

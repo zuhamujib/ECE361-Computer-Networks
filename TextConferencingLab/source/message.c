@@ -8,6 +8,6 @@ void serialize_msg(struct message *msg, char *buffer, size_t buffer_size) {
 }
 
 void deserialize_msg(const char *buffer, struct message *msg) {
-     sscanf(buffer, "%d:%d:%49[^:]:%1023[^\n]", &(msg->type), &(msg->size), msg->source, msg->data);
+     sscanf(buffer, "%d:%d:%49[^:]:%1023c", &(msg->type), &(msg->size), msg->source, msg->data);
      // retrieves the value, the size, the name up to 49 bytes, and the data up to 1023 bytes
 }

@@ -103,11 +103,12 @@ void handle_client(void *arg) {
                         char buffer[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
                         serialize_msg(&response, buffer, BUFFER_SIZE);
                         send(sock, buffer, strlen(buffer), 0);
-                        continue;
+                        break;
 
                     } else if (clients[i] == NULL) {   // need to add the new client to the database of active clients
 
                         // we put in all the client info into the database, and put in an empty string into the session
+                        printf("THE INDEX: %d", i);
                         clients[i] = (client_t *)malloc(sizeof(client_t));
                         clients[i]->socket = sock;
                         strcpy(clients[i]->id, msg.source);
@@ -497,11 +498,16 @@ void handle_client(void *arg) {
             
             printf("%p", clients);
             for (int i = 0; i < MAX_CLIENTS; i++) {
+                char temp[MAX_NAME + 50]; 
                 if (clients[i] != NULL) {
-                    char temp[MAX_NAME + 20];  // Buffer for each client entry
+                    printf("QUERY INDEX: %d\n", i);
+                    printf("info: %s", clients[i]->id);
+                    //char temp[MAX_NAME + 50];  // Buffer for each client entry
                     sprintf(temp, "CLIENT: %s in session: %s\n", clients[i]->id, 
                             (strlen(clients[i]->session) > 0) ? clients[i]->session : "No session");
+
                     strcat(response_data, temp);
+                    printf("\nREESP: %s", response_data);
                 }
             }
 
@@ -515,9 +521,11 @@ void handle_client(void *arg) {
             response.size = strlen(response_data);
             strcpy(response.source, "server");
             strcpy(response.data, response_data);
+            printf("\nRESP DATA: %s", response.data);
 
             char buffer[BUFFER_SIZE];
             serialize_msg(&response, buffer, BUFFER_SIZE);
+            printf("RESP2 %s", buffer);
             send(sock, buffer, strlen(buffer), 0);
 
             printf("Sent QUERY response to client %s\n", msg.source);
