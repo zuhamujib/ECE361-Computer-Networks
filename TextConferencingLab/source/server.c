@@ -479,13 +479,27 @@ void handle_client(void *arg) {
             char sender_buff[BUFFER_SIZE];
             serialize_msg(&msg, sender_buff, BUFFER_SIZE); 
 
+            printf("num of clients in session: %d\n", sessions[session_index].client_count);
             // actually going through and sending the message to each client in the curent session
             for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
                 // send the data message to all clients 
                 client_t *receiver = sessions[session_index].s_clients[curr_client];
 
+                // need to send an error message 
+                struct message send_msg;
+                memset(&send_msg, 0, sizeof(send_msg));
+
+                // theres no like error message associated with the error so ill just send it in a message back
+                send_msg.type = MESSAGE;
+                strcpy(send_msg.source, "server");
+                strcpy(send_msg.data, buffer);
+                send_msg.size = strlen(send_msg.data);
+
+                // serializing adn sending error message
+                char msg_buffer[BUFFER_SIZE];
+                serialize_msg(&send_msg, msg_buffer, BUFFER_SIZE);
+                send(receiver->socket, msg_buffer, strlen(msg_buffer), 0);
                 // Skipped the sender dont know is we need to go this
-        
             }
 
             pthread_mutex_unlock(&sessions_mutex);
