@@ -169,8 +169,12 @@ int main() {
             msg.type = NEW_SESS;
             strcpy((char *)msg.data, session_id);
             msg.size = strlen((char *)msg.data);
+            strcpy((char *)msg.source, client_id);
 
             serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
+            printf("Parsed values:\nClient ID: %s\n Data: %s\n", msg.source, msg.data);
+            fflush(stdout); 
+
             send(sockfd, &send_buffer, sizeof(send_buffer), 0);
 
             struct sockaddr_in from_addr;
