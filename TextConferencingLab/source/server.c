@@ -242,7 +242,10 @@ void handle_client(void *arg) {
             // STEP 1: lock the sessions database
             // STEP 2: Retrieve the actual index of the ID using the sesion name
             // STEP 3: in the session, look through the list of arrays, adn find the client again in the sessions array
+            // STEP 4: If the client is last in the session delete the whole session
+            
             // once we find the thing in the sessions array we can removce it from the actual dessions array
+
             pthread_mutex_lock(&sessions_mutex);
 
             int session_index = -1;
@@ -271,7 +274,7 @@ void handle_client(void *arg) {
                     // if the current one is the client then remove it
                     if (sessions[session_index].s_clients[curr_client] == special_client) {
 
-                        // just in this case we are going to shift the remaining sessions up 
+                        // just in this case we are going to shift the remaining clients up 
 
                         for (int shift = curr_client; shift < sessions[session_index].client_count - 1; shift++) {
                             sessions[session_index].s_clients[shift] = sessions[session_index].s_clients[shift + 1];
@@ -283,6 +286,14 @@ void handle_client(void *arg) {
 
                     }
 
+                }
+
+                // we check if the client count for teh session became 0 so we can delete it
+                if (sessions[session_index].client_count == 0) {
+
+                    // full reset the session 
+                    memset(&sessions[session_index], 0, sizeof(session_t)); 
+                    printf("Last client has left, no more sessions!\n", special_client->session);
                 }
 
                 // finally full clear the memory for that clients sesion
@@ -389,6 +400,60 @@ void handle_client(void *arg) {
             // Step 1: basically retrieve the session of the current client
             // Step 2: Parse through all the users and send them each a message 
             // Step 3: keep in mind your going to have to use that specific users SOCK
+
+            pthread_mutex_lock(&sessions_mutex);
+
+            // finding the session
+            int session_index = -1;
+
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (strcmp(sessions[i].session_id, special_client->session) == 0) {
+                    session_index = i;
+                    break;
+                }
+            }
+
+            // if not found then the user isnt currently in a session
+            if (session_index == -1) {
+                printf("Error: Session not found for client %s.\n", special_client->id);
+
+                // need to send an error message 
+                struct message error_msg;
+                memset(&error_msg, 0, sizeof(error_msg));
+
+                // theres no like error message associated with the error so ill just send it in a message back
+                error_msg.type = MESSAGE;
+                strcpy(error_msg.source, "server");
+                strcpy(error_msg.data, "Not in a Session");
+                error_msg.size = strlen(error_msg.data);
+
+                // serializing adn sending error message
+                char error_buffer[BUFFER_SIZE];
+                serialize_msg(&error_msg, error_buffer, BUFFER_SIZE);
+                send(special_client->socket, error_buffer, strlen(error_buffer), 0);
+
+
+                pthread_mutex_unlock(&sessions_mutex);
+                return;
+            }
+
+            // technically we can send the bugger directly since already type of message 
+            serialize_msg(&msg, buffer, BUFFER_SIZE); 
+
+            // actually going through and sending the message to each client in the curent session
+            for (int curr_client = 0; curr_client < sessions[session_index].client_count; curr_client++) {
+                // send the data message to all clients 
+                client_t *receiver = sessions[session_index].s_clients[curr_client];
+
+                // Skipped the sender dont know is we need to go this
+                if (receiver->socket != special_client->socket) {
+                    send(receiver->socket, buffer, strlen(buffer), 0);
+                }
+            }
+
+            pthread_mutex_unlock(&sessions_mutex);
+
+
         }
         else if (msg.type == QUERY) {
             // query
