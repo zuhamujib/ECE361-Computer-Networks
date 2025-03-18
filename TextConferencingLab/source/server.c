@@ -152,12 +152,39 @@ void handle_client(void *arg) {
             printf("getting to the exit part\n");
             fflush(stdout);
 
-            // Here we wanna remove the user from the list of active users
-            // we would also have to make sure they are removed from any sessions
-            // almost all parts might need a mutex i think 
+                // Here we wanna remove the user from the list of active users
+                // we would also have to make sure they are removed from any sessions
+                // almost all parts might need a mutex i think 
 
-            // Step 1: Go through the sessions and remove the user from any sessions possibly lock seessions info
-            // Step 2: Go through active clients list and remove
+                // Step 1: Go through the sessions and remove the user from any sessions possibly lock seessions info
+                // Step 2: Go through active clients list and remove
+
+            for (int i = 0; i < MAX_SESSIONS; i++) {
+                if (sessions[i].client_count > 0) {
+                    for (int j = 0; j < sessions[i].client_count; j++) {
+                        if (sessions[i].s_clients[j] == special_client) {
+                            
+                            // Remove the client from the session
+                            for (int k = j; k < sessions[i].client_count - 1; k++) {
+                                sessions[i].s_clients[k] = sessions[i].s_clients[k + 1];
+                            }
+                            sessions[i].client_count--;
+
+                            // If this was the last client, delete the session
+                            if (sessions[i].client_count == 0) {
+                                printf("Session %s deleted (last user logged out).\n", sessions[i].session_id);
+                                memset(&sessions[i], 0, sizeof(session_t));  // Reset session
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+
+
+
             int found = 0;
 
             pthread_mutex_lock(&clients_mutex);
@@ -166,8 +193,9 @@ void handle_client(void *arg) {
                     // Once we find the client with the user we are currently working with
                     // we remove the client 
 
-                    printf("Removing client: %s\n", clients[i]->id);
-                    
+                    printf("Removing client: %s\n", clients[i]->id);                    
+
+
                     // need to close the socket, and free eberyting we used
                     shutdown(clients[i]->socket, SHUT_RDWR);
                     close(clients[i]->socket); 
