@@ -30,10 +30,69 @@ pthread_mutex_t sessions_mutex;
 // function to find a client based on the sock
 //this is for like after your login because we dont know the client 
 
+void inactive_exit(client_t *special_client, int sock) {
+
+    // basically the same as exit
+    for (int i = 0; i < MAX_SESSIONS; i++) {
+        if (sessions[i].client_count > 0) {
+            for (int j = 0; j < sessions[i].client_count; j++) {
+                if (sessions[i].s_clients[j] == special_client) {
+                    // Shift remaining clients
+                    for (int k = j; k < sessions[i].client_count - 1; k++) {
+                        sessions[i].s_clients[k] = sessions[i].s_clients[k + 1];
+                    }
+                    sessions[i].client_count--;
+
+                    if (sessions[i].client_count == 0) {
+                        printf("Session %s deleted (last user logged out).\n", sessions[i].session_id);
+                        memset(&sessions[i], 0, sizeof(session_t));
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+    int found = 0;
+    pthread_mutex_lock(&clients_mutex);
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i] && strcmp(clients[i]->id, special_client->id) == 0) {
+            //printf("Removing client: %s\n", clients[i]->id);
+
+            shutdown(clients[i]->socket, SHUT_RDWR);
+            close(clients[i]->socket);
+            free(clients[i]);
+            clients[i] = NULL;
+
+            total_active--;
+            found = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
+
+    if (found) {
+        printf("Client successfully removed from active list.\n");
+    } else {
+        printf("Error: Client %s not found in active list!\n");
+    }
+
+    shutdown(sock, SHUT_RDWR);
+    close(sock);
+}
+
 // STEP 4: CLIENT PACKET HANDLING: start off by dealing with the client message
 void handle_client(void *arg) {
 
     int sock = *((int *)arg);
+    struct timeval timeout;
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+
+    // basically here im changing the socket options so that the recv later will only wait 10seconds
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeout));
+
     free(arg);
     char buffer[BUFFER_SIZE];
     struct message msg;
@@ -49,13 +108,29 @@ void handle_client(void *arg) {
         memset(&msg, 0, sizeof(msg)); 
 
         ssize_t recv_size = recv(sock, buffer, sizeof(buffer), 0);
-        if (recv_size <= 0) {
+        if (recv_size == 0) {
             break;
+        } else if (recv_size < 0) {
+            printf("Client inactive for at least 10 sectons\n");
+            
+
+            if (special_client) {
+                printf("Disconnecting inactive client: %s\n", special_client->id);
+            } 
+
+            // call proper exit function
+            inactive_exit(special_client, sock);
+            return;
         }
 
         printf("the buffer: %s \n", buffer);
         deserialize_msg(buffer, &msg);  // After we retrieve the client message, deserializing it
-        
+
+        // we check the the client times
+        if (special_client != NULL) {
+            special_client->last_active = time(NULL);
+        }
+                
         printf("Parsed values:\nClient ID: %s\nData: %s\nSize: %d\n", msg.source, msg.data, msg.size);
         fflush(stdout); 
 
@@ -114,6 +189,7 @@ void handle_client(void *arg) {
                         strcpy(clients[i]->id, msg.source);
                         memset(clients[i]->session, 0, MAX_NAME);  
                         clients[i]->active = 1;
+                        clients[i]->last_active = time(NULL); 
 
                         // setting the special client
                         special_client = clients[i];
@@ -600,7 +676,6 @@ void handle_client(void *arg) {
     // idt its ever gunan get here but idk if memory leaks will be a porblem
     pthread_mutex_destroy(&clients_mutex);
 }
-
 
 
 int main(int argc, char *argv[]) {

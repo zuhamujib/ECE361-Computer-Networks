@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h> 
 
 #define MAX_SESSIONS 10              // Maximum number of active sessions
 #define MAX_CLIENTS_PER_SESSION 10   // Maximum number of clients per session
@@ -31,6 +32,7 @@ typedef struct {
     int socket; // for comm between server and user possibly
     char session[MAX_NAME];
     int active;
+    time_t last_active;
 } client_t;
 
 typedef struct {
