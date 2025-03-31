@@ -7,6 +7,7 @@
 
 #include "session.h"
 #include "message.h"
+#include "clients.h"
 
 #define MAX_CLIENTS 10
 
@@ -17,6 +18,10 @@ char *hardcoded_users[][2] = {
         {"prof", "best"},
         {NULL, NULL}  // End marker
     };
+
+users_t *users = NULL;
+int user_count = 0;
+int user_capacity = 10;
 
 // ACTIVE USERS DATABASE AND LOCK FOR CLIENTS
 client_t *clients[MAX_CLIENTS];
@@ -74,12 +79,12 @@ void handle_client(void *arg) {
             int logged = 0; // variable keeping track of access to a shared active user database to verify successful login (for mutexes)
 
             for (int i = 0; hardcoded_users[i][0] != NULL; i++) {   // verifying username and password
-            if (strcmp(msg.source, hardcoded_users[i][0]) == 0 && strcmp(password, hardcoded_users[i][1]) == 0) {
-                logged = 1;
-                break;
+                if (strcmp(msg.source, hardcoded_users[i][0]) == 0 && strcmp(password, hardcoded_users[i][1]) == 0) {
+                    logged = 1;
+                    break;
                 }
             }
-
+            
             struct message response;    // here we are setting up the response struct
             memset(&response, 0, sizeof(response));
             strcpy(response.source, "server");
@@ -135,12 +140,16 @@ void handle_client(void *arg) {
                 printf("\nUser %s logged in successfully\n", msg.source);
 
             } else {
-
-                // the login failed so we prepare teh fialed login message
+                /*
+                / the login failed so we prepare teh fialed login message
                 response.type = LO_NAK;
                 strcpy(response.data, "Invalid username or password");
                 response.size = strlen(response.data);
                 printf("Login failed for user %s\n", msg.source);
+                */
+
+                // REGISTER THE USER
+
             }
 
             char buffer_2[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)

@@ -58,8 +58,8 @@ int main() {
     
     // Create threads for input and receiving messages
     pthread_t input_tid, recv_tid;
-    pthread_create(&input_tid, NULL, input_thread, NULL); // Start input handling threa
-    pthread_create(&recv_tid, NULL, recv_thread, NULL); // Start receiving thread
+    pthread_create(&input_tid, NULL, input_thread, NULL); 
+    pthread_create(&recv_tid, NULL, recv_thread, NULL); 
 
     // Wait for threads to finish
     pthread_join(recv_tid, NULL);
@@ -77,9 +77,8 @@ void *recv_thread(void *arg) {
 
     while (1) {
 
-        // Wait for the connection to be established before receiving
         while (!connected) {
-            usleep(100000); // Wait 100ms and check again (avoid busy-waiting)
+            usleep(100000); // Wait 100ms and check again
         }
 
         memset(recieve_buffer, 0, sizeof(recieve_buffer));
@@ -305,6 +304,7 @@ void *input_thread(void *arg) {
 
     close(sockfd);
 }
+
 
 // **Function to process acknowledgments from the server**
 void handle_Acks(struct message *msg) {

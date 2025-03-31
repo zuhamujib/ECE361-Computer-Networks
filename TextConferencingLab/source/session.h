@@ -11,19 +11,19 @@
 
 // Enum for session-related packet types
 typedef enum {
-    LOGIN,       // Client logs into the server
-    LO_ACK,      // Server acknowledges successful login
-    LO_NAK,      // Server sends login failure reason
-    EXIT,        // Client exits the server
-    JOIN,        // Client joins an existing session
-    JN_ACK,      // Server acknowledges successful session join
-    JN_NAK,      // Server sends session join failure reason
-    LEAVE_SESS,  // Client leaves a session
-    NEW_SESS,    // Client creates a new session
-    NS_ACK,      // Server acknowledges session creation
-    MESSAGE,     // Client sends a message
-    QUERY,       // Client requests a list of online users and active sessions
-    QU_ACK       // Server responds with a list of users and sessions
+    LOGIN,       
+    LO_ACK,     
+    LO_NAK,      
+    EXIT,        
+    JOIN,        
+    JN_ACK,      
+    JN_NAK,      
+    LEAVE_SESS,  
+    NEW_SESS,    
+    NS_ACK,      
+    MESSAGE,     
+    QUERY,       
+    QU_ACK      
 } PacketType;
 
 typedef struct {
@@ -42,9 +42,6 @@ typedef struct {
 // Global array to store active sessions
 extern session_t sessions[MAX_SESSIONS];
 extern int num_sessions;  // Track the number of active sessions
-
-PacketType get_packet_type(const char *type_str);
-const char* get_packet_type_string(PacketType type);
 
 #endif  // SESSION_H
 
