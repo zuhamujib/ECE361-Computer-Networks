@@ -158,7 +158,7 @@ void handle_client(void *arg) {
                     }
                     break;
                 }
-            }
+            }//dsh)
             
             struct message response;    // here we are setting up the response struct
             memset(&response, 0, sizeof(response));

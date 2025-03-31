@@ -11,3 +11,5 @@ deliver: deliver.o message.o session.o
 	$(CC) -c $< -o $@
 clean:
 	rm -f *.o server deliver
+
+	
