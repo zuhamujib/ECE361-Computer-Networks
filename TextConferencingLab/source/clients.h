@@ -2,12 +2,13 @@
 #include "message.h"
 
 typedef struct {
-    char* username[MAX_NAME];
-    char* passsword[MAX_NAME];
+    char username[MAX_NAME];
+    char password[MAX_NAME];
 } user_t;
 
-extern users_t *users;
+extern user_t *users;
 extern int user_count;
+extern int user_capacity;
 
-void users_on_file();
+void load_users_on_file();
 void save_to_file(const char* username, const char* password);

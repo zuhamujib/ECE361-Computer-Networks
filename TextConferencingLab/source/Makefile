@@ -2,8 +2,8 @@ CC=gcc
 
 all: server deliver
 	
-server: server.o message.o session.o
-	$(CC) -o server server.o message.o session.o
+server: server.o message.o session.o clients.o
+	$(CC) -o server server.o message.o session.o clients.o
 deliver: deliver.o message.o session.o
 	$(CC) -o deliver deliver.o message.o session.o -lm
 

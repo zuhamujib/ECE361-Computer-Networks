@@ -19,10 +19,6 @@ char *hardcoded_users[][2] = {
         {NULL, NULL}  // End marker
     };
 
-users_t *users = NULL;
-int user_count = 0;
-int user_capacity = 10;
-
 // ACTIVE USERS DATABASE AND LOCK FOR CLIENTS
 client_t *clients[MAX_CLIENTS];
 pthread_mutex_t clients_mutex;
@@ -152,10 +148,14 @@ void handle_client(void *arg) {
             sscanf(msg.data, "%s", password);  // Extract password from msg.data
 
             int logged = 0; // variable keeping track of access to a shared active user database to verify successful login (for mutexes)
+            int found = 0;
 
-            for (int i = 0; hardcoded_users[i][0] != NULL; i++) {   // verifying username and password
-                if (strcmp(msg.source, hardcoded_users[i][0]) == 0 && strcmp(password, hardcoded_users[i][1]) == 0) {
-                    logged = 1;
+            for (int i = 0; i < user_count; i++) {   // verifying username and password
+                if (strcmp(msg.source, users[i].username) == 0) {
+                    found = 1;
+                    if (strcmp(password, users[i].password) == 0) {
+                        logged = 1;
+                    }
                     break;
                 }
             }
@@ -216,16 +216,28 @@ void handle_client(void *arg) {
                 printf("\nUser %s logged in successfully\n", msg.source);
 
             } else {
-                /*
-                / the login failed so we prepare teh fialed login message
+                
+                if (!found) {
+                    // if the username was not found, register the user
+                    if (user_count < user_capacity) {
+                        user_capacity *= 2;
+                        users = realloc(users, sizeof(user_t) * user_capacity);
+                    }
+
+                    // add to the array pf users
+                    // copying the contents of the file into the array
+                    strcpy(users[user_count].username, msg.source);
+                    strcpy(users[user_count].password, password);
+                    user_count++;
+                    save_to_file(msg.source, password);
+                    logged = 1;
+                    printf("\nRegistered newuser %s, status: logged in successfully\n", msg.source);
+                }
+                // the login failed so we prepare teh fialed login message
                 response.type = LO_NAK;
                 strcpy(response.data, "Invalid username or password");
                 response.size = strlen(response.data);
                 printf("Login failed for user %s\n", msg.source);
-                */
-
-                // REGISTER THE USER
-
             }
 
             char buffer_2[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
@@ -738,8 +750,10 @@ int main(int argc, char *argv[]) {
     // creating teh mutex for the list of active clients
     pthread_mutex_init(&clients_mutex, NULL);
 
-    while (1) {
+    load_users_on_file();
 
+    while (1) {
+        
         printf("waitin for clients...\n");
         fflush(stdout);
  
