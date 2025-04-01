@@ -348,6 +348,14 @@ void handle_Acks(struct message *msg) {
             break;
         case LO_NAK:
             printf("Login failed: %s\n", msg->data);
+            shutdown(sockfd, SHUT_RDWR);
+            close(sockfd);
+
+            sockfd = socket(AF_INET, SOCK_STREAM, 0);                                                           // SOCK_STREAM for TCP
+            if (sockfd < 0) {
+                perror("Socket failed");
+                exit(1);
+            }
             break;
         case JN_ACK:
             printf("Successfully joined session: %s\n", msg->data);
