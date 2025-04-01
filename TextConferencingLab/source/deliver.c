@@ -18,6 +18,7 @@ STEPS TO FOLLOW:
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <pthread.h>
+#include <signal.h>
 
 /* **********************  ALL INCLUDE HEADERS  ********************** */
 #include "message.h"
@@ -32,6 +33,7 @@ void handle_Acks(struct message *msg);
 void trim_newline(char *str);
 void *input_thread(void *arg);
 void *recv_thread(void *arg);
+void handle_kill(int sig);
 
 /* ******************************************************************** */
 int sockfd;
@@ -51,6 +53,9 @@ int main() {
         perror("Socket failed");
         return -1;
     }
+
+    // handling keybaord kill
+    signal(SIGINT, handle_kill);    
 
     socket_addr.sin_family = AF_INET;                                                             // internet address family IPv4
 
@@ -305,6 +310,35 @@ void *input_thread(void *arg) {
     close(sockfd);
 }
 
+// ** Function handles the keyboar dinterrupt for kill **
+void handle_kill(int sig) {
+    printf("at the function\n");
+    fflush(stdout);
+
+    struct message msg;
+    char send_buffer[BUFFER_SIZE];
+
+    msg.type = EXIT;
+    msg.size = 0;
+    // msg.source = client_id;
+    strcpy(msg.source, client_id);                                                             // Store client_id
+    
+    printf("Parsed values:\nClient ID: %s \nType: %d\n\n", msg.source, msg.type);
+    fflush(stdout); 
+
+    serialize_msg(&msg, send_buffer, sizeof(send_buffer));                                          // seriallize the msg
+    send(sockfd, &send_buffer, sizeof(send_buffer), 0);
+    printf("Logged out.\n");
+    
+    shutdown(sockfd, SHUT_RDWR);
+    close(sockfd);
+
+    printf("Exiting client.\n");
+
+    exit(0);
+
+
+}
 
 // **Function to process acknowledgments from the server**
 void handle_Acks(struct message *msg) {

@@ -89,7 +89,7 @@ void handle_client(void *arg) {
 
     int sock = *((int *)arg);
     struct timeval timeout;
-    timeout.tv_sec = 1000000000;
+    timeout.tv_sec = 20;
     timeout.tv_usec = 0;
 
     // basically here im changing the socket options so that the recv later will only wait 10seconds
