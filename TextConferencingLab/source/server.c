@@ -89,7 +89,7 @@ void handle_client(void *arg) {
 
     int sock = *((int *)arg);
     struct timeval timeout;
-    timeout.tv_sec = 10000;
+    timeout.tv_sec = 1000000000;
     timeout.tv_usec = 0;
 
     // basically here im changing the socket options so that the recv later will only wait 10seconds
@@ -245,6 +245,13 @@ void handle_client(void *arg) {
             char buffer_2[BUFFER_SIZE];   // sending the buffer response (LO_ACK or LO_NAK)
             serialize_msg(&response, buffer_2, BUFFER_SIZE);
             send(sock, buffer_2, strlen(buffer_2), 0);
+
+            if (response.type == LO_NAK) {
+                // closing the socket connection immediately after failed login so a retry is allowed
+                shutdown(sock, SHUT_RDWR);
+                close(sock);
+                return;
+            }
         
         /************************************************** 2. EXIT A CLIENT CONNECTION **************************************************/
         } else if (msg.type == EXIT) {
