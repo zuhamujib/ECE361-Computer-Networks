@@ -10,8 +10,11 @@ void load_users_on_file() {
     FILE *fptr;
 
     // opening the file to read its contents
-    fptr = fopen("hardcoded_users", "r");
-    if (!fptr) return;
+    fptr = fopen(hardcoded_users, "r");
+    if (!fptr) {
+        perror("Error opening file");
+        return;
+    }
 
     // Store the username and password
     char username[MAX_NAME], password[MAX_NAME];
@@ -40,9 +43,15 @@ void load_users_on_file() {
 
 void save_to_file(const char* username, const char* password) {
     FILE *fptr;
+    // opening the file to read its contents
+    fptr = fopen(hardcoded_users, "a");
+    if (!fptr) {
+        perror("Error opening file");
+        return;
+    }
 
     if (fptr) {
-        fprintf(fptr, "%s %s\n", username, password);
+        fprintf(fptr, "\n%s %s", username, password);
         fclose(fptr);
     }
 }

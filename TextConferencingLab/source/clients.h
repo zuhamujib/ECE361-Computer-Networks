@@ -3,7 +3,7 @@
 
 typedef struct {
     char username[MAX_NAME];
-    char password[MAX_NAME];
+    char password[MAX_DATA];
 } user_t;
 
 extern user_t *users;

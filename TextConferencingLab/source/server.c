@@ -12,13 +12,14 @@
 #define MAX_CLIENTS 10
 
 // HARD CODED DATABASE
+/*
 char *hardcoded_users[][2] = {
         {"tya", "test"},
         {"zuha", "vest"},
         {"prof", "best"},
         {NULL, NULL}  // End marker
     };
-
+*/
 // ACTIVE USERS DATABASE AND LOCK FOR CLIENTS
 client_t *clients[MAX_CLIENTS];
 pthread_mutex_t clients_mutex;
@@ -88,7 +89,7 @@ void handle_client(void *arg) {
 
     int sock = *((int *)arg);
     struct timeval timeout;
-    timeout.tv_sec = 10;
+    timeout.tv_sec = 10000;
     timeout.tv_usec = 0;
 
     // basically here im changing the socket options so that the recv later will only wait 10seconds
@@ -158,11 +159,28 @@ void handle_client(void *arg) {
                     }
                     break;
                 }
-            }//dsh)
+            }
             
             struct message response;    // here we are setting up the response struct
             memset(&response, 0, sizeof(response));
             strcpy(response.source, "server");
+
+            if (!found) {
+                // if the username was not found, register the user
+                if (user_count < user_capacity) {
+                    user_capacity *= 2;
+                    users = realloc(users, sizeof(user_t) * user_capacity);
+                }
+
+                // add to the array pf users
+                // copying the contents of the file into the array
+                strcpy(users[user_count].username, msg.source);
+                strcpy(users[user_count].password, password);
+                user_count++;
+                save_to_file(msg.source, password);
+                logged = 1;
+                printf("\nRegistered newuser %s, status: logged in successfully\n", msg.source);
+            }
 
             if (logged) {
                 // locking database
@@ -216,23 +234,7 @@ void handle_client(void *arg) {
                 printf("\nUser %s logged in successfully\n", msg.source);
 
             } else {
-                
-                if (!found) {
-                    // if the username was not found, register the user
-                    if (user_count < user_capacity) {
-                        user_capacity *= 2;
-                        users = realloc(users, sizeof(user_t) * user_capacity);
-                    }
-
-                    // add to the array pf users
-                    // copying the contents of the file into the array
-                    strcpy(users[user_count].username, msg.source);
-                    strcpy(users[user_count].password, password);
-                    user_count++;
-                    save_to_file(msg.source, password);
-                    logged = 1;
-                    printf("\nRegistered newuser %s, status: logged in successfully\n", msg.source);
-                }
+            
                 // the login failed so we prepare teh fialed login message
                 response.type = LO_NAK;
                 strcpy(response.data, "Invalid username or password");
