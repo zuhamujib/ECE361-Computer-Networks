@@ -1,7 +1,5 @@
 # ECE361-Computer-Networks
 
-# ECE361 – Computer Networks
-
 This repository contains lab assignments completed as part of **ECE361: Computer Networks** at the University of Toronto. The labs focus on network programming in C using UNIX sockets, covering both connection-oriented and connectionless communication.
 
 ## Labs
